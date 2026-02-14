@@ -1,5 +1,13 @@
-import { Bell, ShieldCheck } from "lucide-react";
+import { Bell, ChevronRight, ShieldCheck } from "lucide-react";
 import SuperAdminMobileSidebar from "@/shared/layout/SuperAdminMobileSidebar";
+import { Link, useLocation } from "react-router-dom";
+
+const BREADCRUMB_LABELS: Record<string, string> = {
+  superadmin: "God View",
+  managers: "Branch Managers",
+  suppliers: "Supplier Registry",
+  auditlogs: "Audit Logs",
+};
 
 export default function SuperAdminHeader({
   title,
@@ -8,23 +16,47 @@ export default function SuperAdminHeader({
   title: string;
   label: string;
 }) {
+  const location = useLocation();
+  const segments = location.pathname.split("/").filter(Boolean);
+
   return (
     <>
       <SuperAdminMobileSidebar />
-      <header className="h-16 border-b border-slate-200 bg-white/80 backdrop-blur-md flex items-center justify-between px-8 z-40 sticky top-0">
-        <div className="flex items-center gap-4">
-          <div className="hidden lg:flex items-center gap-2">
-            <ShieldCheck className="size-5 text-[#FFD700]" />
-            <h1 className="text-xl font-bold text-[#001F3F]">{title}</h1>
-          </div>
-          <span className="h-4 w-px bg-slate-300 hidden lg:flex"></span>
-          <span className="text-sm text-slate-500 hidden lg:flex">{label}</span>
+      <header className="h-14 border-b border-slate-200 bg-white/90 backdrop-blur-md flex items-center justify-between px-6 lg:px-8 z-40 sticky top-0">
+        <div className="flex items-center gap-3">
+          <ShieldCheck className="size-4 text-[#FFD700] hidden lg:block" />
+          {/* Breadcrumbs */}
+          <nav className="hidden lg:flex items-center gap-1 text-xs">
+            <Link
+              to="/superadmin"
+              className="text-slate-400 hover:text-[#001F3F] transition-colors font-medium"
+            >
+              Super Admin
+            </Link>
+            {segments.slice(1).map((seg, idx) => (
+              <span key={idx} className="flex items-center gap-1">
+                <ChevronRight className="size-3 text-slate-300" />
+                <span className="text-[#001F3F] font-bold">
+                  {BREADCRUMB_LABELS[seg] || seg}
+                </span>
+              </span>
+            ))}
+            {segments.length <= 1 && (
+              <span className="flex items-center gap-1">
+                <ChevronRight className="size-3 text-slate-300" />
+                <span className="text-[#001F3F] font-bold">{title}</span>
+              </span>
+            )}
+          </nav>
+          <span className="text-[10px] text-slate-400 hidden lg:block ml-2 font-medium">
+            — {label}
+          </span>
         </div>
 
-        <div className="hidden sm:flex items-center gap-4">
-          <button className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-[#001F3F] transition-colors relative">
+        <div className="hidden sm:flex items-center gap-3">
+          <button className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-[#001F3F] transition-colors relative">
             <Bell className="size-4" />
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
           </button>
         </div>
       </header>

@@ -1,6 +1,4 @@
 import {
-  ChevronLeft,
-  ChevronRight,
   Edit,
   MapPin,
   Printer,
@@ -10,26 +8,60 @@ import {
 } from "lucide-react";
 import HeaderCell from "@/shared/components/HeaderCell";
 import StatusBadge from "@/shared/components/StatusBadge";
+import Pagination from "@/shared/components/Pagination";
+import ExportToolbar from "@/shared/components/ExportToolbar";
+import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
 import { UseGetBinState } from "@/modules/bin-management/store/UseGetBins";
 import { UseBinState } from "@/modules/bin-management/store/UseBinManagement";
 import { useState } from "react";
 
+const CSV_PDF_HEADERS = ["Bin Code", "Zone", "Current", "Capacity", "Status"];
+
 export default function BinsTable() {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const INITIAL_BINS = UseGetBinState((b) => b.NEW_INITIAL_BINS);
   const setQrModalData = UseBinState((b) => b.setQrModalData);
   const isAddModalOpen = UseBinState((b) => b.isAddModalOpen);
   const setIsAddModalOpen = UseBinState((b) => b.setIsAddModalOpen);
   const qrModalData = UseBinState((b) => b.qrModalData);
-  const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this bin location?")) {
-      INITIAL_BINS.filter((b) => b.id !== id);
-    }
-  };
   const [newBin, setNewBin] = useState({
     code: "",
     zone: "Zone A (High Velocity)",
     capacity: 50,
   });
+
+  const totalLength = INITIAL_BINS.length;
+  const displayedData = INITIAL_BINS.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const handleCSV = () => {
+    const rows = INITIAL_BINS.map((b) => [
+      b.code,
+      b.zone,
+      String(b.current),
+      String(b.capacity),
+      b.status,
+    ]);
+    exportToCSV("bin-locations", CSV_PDF_HEADERS, rows);
+  };
+
+  const handlePDF = () => {
+    const rows = INITIAL_BINS.map((b) => [
+      b.code,
+      b.zone,
+      String(b.current),
+      String(b.capacity),
+      b.status,
+    ]);
+    exportToPDF("bin-locations", "Bin Locations Report", CSV_PDF_HEADERS, rows);
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("Are you sure you want to delete this bin location?")) {
+      INITIAL_BINS.filter((b) => b.id !== id);
+    }
+  };
 
   const handleAddBin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,13 +81,14 @@ export default function BinsTable() {
   const handlePrintSingle = (bin: any) => {
     alert(`Printing label for ${bin.code}...`);
   };
+
   return (
     <>
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
+              <tr className="bg-slate-50/80 border-b border-slate-100">
                 <HeaderCell label="Bin Code" />
                 <HeaderCell label="Zone / Area" />
                 <HeaderCell label="Capacity" />
@@ -64,14 +97,14 @@ export default function BinsTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {INITIAL_BINS.map((bin) => (
+              {displayedData.map((bin) => (
                 <tr
                   key={bin.id}
-                  className="hover:bg-slate-50 transition-colors group"
+                  className="even:bg-slate-50/50 hover:bg-blue-50/30"
                 >
-                  <td className="p-4">
+                  <td className="p-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-[#001F3F] group-hover:bg-[#001F3F] group-hover:text-[#FFD700] transition-colors">
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-[#001F3F]">
                         <MapPin size={18} />
                       </div>
                       <span className="font-mono font-bold text-[#001F3F] text-sm bg-blue-50 px-2 py-1 rounded border border-blue-100">
@@ -79,12 +112,10 @@ export default function BinsTable() {
                       </span>
                     </div>
                   </td>
-                  <td className="p-4">
-                    <span className="text-sm font-medium text-slate-600">
-                      {bin.zone}
-                    </span>
+                  <td className="p-3">
+                    <span className="text-sm font-medium text-slate-600">{bin.zone}</span>
                   </td>
-                  <td className="p-4">
+                  <td className="p-3">
                     <div className="flex items-center gap-2">
                       <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div
@@ -99,31 +130,31 @@ export default function BinsTable() {
                       </span>
                     </div>
                   </td>
-                  <td className="p-4">
+                  <td className="p-3">
                     <StatusBadge
                       status={bin.status}
                       current={bin.current}
                       capacity={bin.capacity}
                     />
                   </td>
-                  <td className="p-4 text-right">
+                  <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => setQrModalData(INITIAL_BINS)}
-                        className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg"
                         title="View/Print QR"
                       >
                         <QrCode size={18} />
                       </button>
                       <button
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg"
                         title="Edit Bin"
                       >
                         <Edit size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(bin.id)}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                         title="Delete Bin"
                       >
                         <Trash2 size={18} />
@@ -135,25 +166,18 @@ export default function BinsTable() {
             </tbody>
           </table>
         </div>
-        <div className="p-4 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-xs text-slate-400 font-medium">
-            Showing {INITIAL_BINS.length} of 42 orders
-          </span>
-          <div className="flex gap-2">
-            <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-[#001F3F] text-xs">
-              <i className="fa-solid fa-chevron-left">
-                <ChevronLeft className="size-4" />
-              </i>
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#001F3F] text-white text-xs font-bold">
-              1
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-[#001F3F] text-xs">
-              <i className="fa-solid fa-chevron-right">
-                <ChevronRight className="size-4" />
-              </i>
-            </button>
-          </div>
+        <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
+          <ExportToolbar onExportCSV={handleCSV} onExportPDF={handlePDF} />
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalLength}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setCurrentPage(1);
+            }}
+          />
         </div>
         {/* --- QR PREVIEW MODAL --- */}
         {qrModalData && (

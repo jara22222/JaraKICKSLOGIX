@@ -1,6 +1,9 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
 import HeaderCell from "@/shared/components/HeaderCell";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import ExportToolbar from "@/shared/components/ExportToolbar";
+import Pagination from "@/shared/components/Pagination";
+import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
+import { useState } from "react";
 
 const ACTION_STYLES: Record<string, string> = {
   CREATE_MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
@@ -23,6 +26,8 @@ export default function AuditLogTable({
   actionFilter: string;
 }) {
   const auditLogs = useSuperAdminStore((s) => s.auditLogs);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filtered = auditLogs.filter((log) => {
     const branchMatch =
@@ -32,12 +37,47 @@ export default function AuditLogTable({
     return branchMatch && actionMatch;
   });
 
+  const paginatedData = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
+
+  const exportHeaders = [
+    "Log ID",
+    "User",
+    "User ID",
+    "Action",
+    "Description",
+    "Branch",
+    "Timestamp",
+  ];
+  const exportRows = filtered.map((log) => [
+    log.id,
+    log.userName,
+    log.userId,
+    log.action.replace(/_/g, " "),
+    log.description,
+    log.branch,
+    log.datePerformed,
+  ]);
+
+  const handleExportCSV = () =>
+    exportToCSV("Audit_Log", exportHeaders, exportRows);
+
+  const handleExportPDF = () =>
+    exportToPDF("Audit_Log", "Audit Log Report", exportHeaders, exportRows);
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-100">
+            <tr className="bg-slate-50/80 border-b border-slate-100">
               <HeaderCell label="Log ID" />
               <HeaderCell label="User" />
               <HeaderCell label="Action" />
@@ -47,17 +87,17 @@ export default function AuditLogTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((log) => (
+            {paginatedData.map((log) => (
               <tr
                 key={log.id}
-                className="group hover:bg-blue-50/50 transition-colors"
+                className="even:bg-slate-50/50 hover:bg-blue-50/30 hover:border-l-2 hover:border-l-[#001F3F] border-l-2 border-l-transparent"
               >
-                <td className="p-4">
+                <td className="p-3">
                   <span className="font-mono text-xs font-bold text-[#001F3F] bg-slate-100 px-2 py-1 rounded border border-slate-200">
                     {log.id}
                   </span>
                 </td>
-                <td className="p-4">
+                <td className="p-3">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-[10px]">
                       {log.userName.charAt(0)}
@@ -72,31 +112,31 @@ export default function AuditLogTable({
                     </div>
                   </div>
                 </td>
-                <td className="p-4">
+                <td className="p-3">
                   <span
                     className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${ACTION_STYLES[log.action] || "bg-slate-50 text-slate-600 border-slate-200"}`}
                   >
                     {log.action.replace(/_/g, " ")}
                   </span>
                 </td>
-                <td className="p-4 max-w-[300px]">
+                <td className="p-3 max-w-[300px]">
                   <p className="text-xs text-slate-600 leading-relaxed">
                     {log.description}
                   </p>
                 </td>
-                <td className="p-4">
+                <td className="p-3">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-slate-50 text-slate-600 border-slate-200">
                     {log.branch}
                   </span>
                 </td>
-                <td className="p-4">
+                <td className="p-3">
                   <span className="text-xs text-slate-500 whitespace-nowrap">
                     {log.datePerformed}
                   </span>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {paginatedData.length === 0 && (
               <tr>
                 <td colSpan={6} className="p-8 text-center">
                   <p className="text-sm text-slate-400">
@@ -108,21 +148,15 @@ export default function AuditLogTable({
           </tbody>
         </table>
       </div>
-      <div className="p-4 border-t border-slate-100 flex items-center justify-between">
-        <span className="text-xs text-slate-400 font-medium">
-          Showing {filtered.length} of {auditLogs.length} log entries
-        </span>
-        <div className="flex gap-2">
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-[#001F3F] text-xs">
-            <ChevronLeft className="size-4" />
-          </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#001F3F] text-white text-xs font-bold">
-            1
-          </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-[#001F3F] text-xs">
-            <ChevronRight className="size-4" />
-          </button>
-        </div>
+      <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
+        <ExportToolbar onExportCSV={handleExportCSV} onExportPDF={handleExportPDF} />
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </div>
     </div>
   );
