@@ -11,14 +11,14 @@ export default function AuditLogs() {
 
   const uniqueActions = [...new Set(auditLogs.map((l) => l.action))];
   const todayCount = auditLogs.filter((l) =>
-    l.datePerformed.includes("Feb 14")
+    l.datePerformed.includes("Feb 14"),
   ).length;
 
   return (
     <>
       <SuperAdminHeader
         title="Audit Logs"
-        label="God-view — All activity across all branches"
+        label="All activity across all branches"
       />
       <div className="flex-1 overflow-y-auto p-6 lg:p-8">
         {/* Stats Row */}
