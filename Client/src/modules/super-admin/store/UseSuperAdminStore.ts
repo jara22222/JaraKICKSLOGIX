@@ -58,9 +58,16 @@ type SuperAdminState = {
   archiveConfirmManager: Manager | null;
   setArchiveConfirmManager: (manager: Manager | null) => void;
 
-  // Supplier modal
+  // Supplier modal (create/edit)
   isSupplierModalOpen: boolean;
   toggleSupplierModal: () => void;
+  editingSupplier: Supplier | null;
+  openEditSupplier: (supplier: Supplier) => void;
+  closeSupplierModal: () => void;
+
+  // Supplier CRUD
+  updateSupplier: (id: number, data: Partial<Supplier>) => void;
+  archiveSupplier: (id: number) => void;
 
   // Data
   branches: Branch[];
@@ -108,8 +115,30 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
 
   // Supplier modal
   isSupplierModalOpen: false,
+  editingSupplier: null,
   toggleSupplierModal: () =>
-    set((state) => ({ isSupplierModalOpen: !state.isSupplierModalOpen })),
+    set((state) => ({
+      isSupplierModalOpen: !state.isSupplierModalOpen,
+      editingSupplier: state.isSupplierModalOpen ? null : state.editingSupplier,
+    })),
+  openEditSupplier: (supplier) =>
+    set({ editingSupplier: supplier, isSupplierModalOpen: true }),
+  closeSupplierModal: () =>
+    set({ isSupplierModalOpen: false, editingSupplier: null }),
+
+  // Supplier CRUD
+  updateSupplier: (id, data) =>
+    set((state) => ({
+      suppliers: state.suppliers.map((s) =>
+        s.id === id ? { ...s, ...data } : s
+      ),
+    })),
+  archiveSupplier: (id) =>
+    set((state) => ({
+      suppliers: state.suppliers.map((s) =>
+        s.id === id ? { ...s, status: "Archived" } : s
+      ),
+    })),
 
   branches: [
     { id: 1, name: "Davao Main Hub", location: "Davao City, Davao del Sur" },

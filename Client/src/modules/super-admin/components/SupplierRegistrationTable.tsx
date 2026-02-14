@@ -1,15 +1,19 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import type { Supplier } from "@/modules/super-admin/store/UseSuperAdminStore";
 import HeaderCell from "@/shared/components/HeaderCell";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import Pagination from "@/shared/components/Pagination";
+import ConfirmationModal from "@/shared/components/ConfirmationModal";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
-import { CheckCircle2, Clock, Pencil, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Pencil, Archive } from "lucide-react";
 import { useState } from "react";
 
 export default function SupplierRegistrationTable() {
-  const suppliers = useSuperAdminStore((s) => s.suppliers);
+  const { suppliers, archiveSupplier, openEditSupplier } =
+    useSuperAdminStore();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [archiveTarget, setArchiveTarget] = useState<Supplier | null>(null);
 
   const paginatedData = suppliers.slice(
     (currentPage - 1) * pageSize,
@@ -46,112 +50,177 @@ export default function SupplierRegistrationTable() {
     exportToCSV("Supplier_Registry", exportHeaders, exportRows);
 
   const handleExportPDF = () =>
-    exportToPDF("Supplier_Registry", "Supplier Registry Report", exportHeaders, exportRows);
+    exportToPDF(
+      "Supplier_Registry",
+      "Supplier Registry Report",
+      exportHeaders,
+      exportRows
+    );
+
+  const statusStyles = (status: string) => {
+    switch (status) {
+      case "Active":
+        return "bg-green-50 text-green-700 border-green-200";
+      case "Archived":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      default:
+        return "bg-amber-50 text-amber-700 border-amber-200";
+    }
+  };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-100">
-              <HeaderCell label="Company Profile" />
-              <HeaderCell label="Contact Person" />
-              <HeaderCell label="Company Address" />
-              <HeaderCell label="Agreement" />
-              <HeaderCell label="Status" />
-              <HeaderCell label="Registered" />
-              <HeaderCell label="Actions" align="right" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {paginatedData.map((supplier) => (
-              <tr
-                key={supplier.id}
-                className="even:bg-slate-50/50 hover:bg-blue-50/30 hover:border-l-2 hover:border-l-[#001F3F] border-l-2 border-l-transparent"
-              >
-                <td className="p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-lg font-bold text-[#001F3F]">
-                      {supplier.companyName.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#001F3F]">
-                        {supplier.companyName}
-                      </p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        SUP-{String(supplier.id).padStart(3, "0")}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-3">
-                  <div>
-                    <p className="text-sm font-medium text-slate-600">
-                      {supplier.contactPerson}
-                    </p>
-                    <p className="text-xs text-slate-400">{supplier.email}</p>
-                  </div>
-                </td>
-                <td className="p-3">
-                  <span className="text-sm text-slate-600 max-w-[200px] truncate block">
-                    {supplier.companyAddress}
-                  </span>
-                </td>
-                <td className="p-3">
-                  {supplier.agreement ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-green-700">
-                      <CheckCircle2 className="size-4" />
-                      Signed
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600">
-                      <Clock className="size-4" />
-                      Pending
-                    </span>
-                  )}
-                </td>
-                <td className="p-3">
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                      supplier.status === "Active"
-                        ? "bg-green-50 text-green-700 border-green-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
-                    {supplier.status}
-                  </span>
-                </td>
-                <td className="p-3">
-                  <span className="text-xs text-slate-500">
-                    {supplier.createdAt}
-                  </span>
-                </td>
-                <td className="p-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <button className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg transition-colors">
-                      <Pencil className="size-4" />
-                    </button>
-                    <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                </td>
+    <>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-100">
+                <HeaderCell label="Company Profile" />
+                <HeaderCell label="Contact Person" />
+                <HeaderCell label="Company Address" />
+                <HeaderCell label="Agreement" />
+                <HeaderCell label="Status" />
+                <HeaderCell label="Registered" />
+                <HeaderCell label="Actions" align="right" />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {paginatedData.map((supplier) => (
+                <tr
+                  key={supplier.id}
+                  className="even:bg-slate-50/50 hover:bg-blue-50/30 hover:border-l-2 hover:border-l-[#001F3F] border-l-2 border-l-transparent"
+                >
+                  <td className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-lg font-bold text-[#001F3F]">
+                        {supplier.companyName.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-[#001F3F]">
+                          {supplier.companyName}
+                        </p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          SUP-{String(supplier.id).padStart(3, "0")}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-600">
+                        {supplier.contactPerson}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {supplier.email}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <span className="text-sm text-slate-600 max-w-[200px] truncate block">
+                      {supplier.companyAddress}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    {supplier.agreement ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-green-700">
+                        <CheckCircle2 className="size-4" />
+                        Signed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600">
+                        <Clock className="size-4" />
+                        Pending
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusStyles(supplier.status)}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
+                      {supplier.status}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    <span className="text-xs text-slate-500">
+                      {supplier.createdAt}
+                    </span>
+                  </td>
+                  <td className="p-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => openEditSupplier(supplier)}
+                        title="Edit supplier"
+                        className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg transition-colors"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
+                      {supplier.status !== "Archived" && (
+                        <button
+                          onClick={() => setArchiveTarget(supplier)}
+                          title="Archive supplier"
+                          className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                        >
+                          <Archive className="size-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
+          <ExportToolbar
+            onExportCSV={handleExportCSV}
+            onExportPDF={handleExportPDF}
+          />
+          <Pagination
+            currentPage={currentPage}
+            totalItems={suppliers.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </div>
       </div>
-      <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
-        <ExportToolbar onExportCSV={handleExportCSV} onExportPDF={handleExportPDF} />
-        <Pagination
-          currentPage={currentPage}
-          totalItems={suppliers.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={handlePageSizeChange}
-        />
-      </div>
-    </div>
+
+      {/* Archive Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        onConfirm={() => {
+          if (archiveTarget) archiveSupplier(archiveTarget.id);
+          setArchiveTarget(null);
+        }}
+        title="Archive Supplier"
+        description="Are you sure you want to archive this supplier? They will be deactivated and no longer appear in active supplier lists."
+        confirmLabel="Archive Supplier"
+        confirmVariant="warning"
+        confirmIcon={<Archive className="size-3.5" />}
+        note="Archived suppliers can be restored later by changing their status back to Active via the edit modal. All historical data will be preserved."
+      >
+        {archiveTarget && (
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-4">
+            <div className="w-11 h-11 rounded-lg bg-slate-200 flex items-center justify-center text-lg font-bold text-[#001F3F] shrink-0">
+              {archiveTarget.companyName.charAt(0)}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-[#001F3F] truncate">
+                {archiveTarget.companyName}
+              </p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                SUP-{String(archiveTarget.id).padStart(3, "0")} &middot;{" "}
+                {archiveTarget.contactPerson}
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {archiveTarget.email}
+              </p>
+            </div>
+          </div>
+        )}
+      </ConfirmationModal>
+    </>
   );
 }

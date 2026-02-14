@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: ["cool-ocean-937d4723.tunnl.gg"],
+    allowedHosts: ["cool-ocean-a9e78298.tunnl.gg"],
   },
   resolve: {
     alias: {

@@ -9,23 +9,28 @@ export default function InventoryManagement() {
 
   return (
     <>
-      <AcessControllHeader title="Inventory" label="Item Inventory" />
-      <div className="flex-1 overflow-y-auto p-8">
+      <AcessControllHeader title="Inventory" label="Item inventory" />
+      <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+        {/* Toolbar */}
         <div className="flex flex-col sm:flex-row justify-between w-full items-start sm:items-center gap-4 mb-6">
-          {/* Status Filter */}
-          <div className="flex h-12 bg-slate-100 p-1 rounded-lg border border-slate-200">
+          {/* Status Filter Pills */}
+          <div className="flex h-[46px] bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
             {["All", "Occupied", "Available"].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${filterStatus === status ? "bg-white text-[#001F3F] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                  filterStatus === status
+                    ? "bg-[#001F3F] text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                }`}
               >
                 {status}
               </button>
             ))}
           </div>
-          <div className="flex gap-4">
-            <SearchToolBar />
+          <div className="flex items-center gap-3">
+            <SearchToolBar placeholder="Search product or SKU..." />
             <DateFilter />
           </div>
         </div>
