@@ -1,9 +1,70 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
 import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function ManagerFormModal() {
-  const { isManagerModalOpen, toggleManagerModal, branches } =
-    useSuperAdminStore();
+  const {
+    isManagerModalOpen,
+    closeManagerModal,
+    editingManager,
+    branches,
+    updateManager,
+  } = useSuperAdminStore();
+
+  const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const [status, setStatus] = useState("Active");
+
+  const isEditMode = !!editingManager;
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editingManager) {
+      setFirstName(editingManager.firstName);
+      setMiddleName(editingManager.middleName);
+      setLastName(editingManager.lastName);
+      setEmail(editingManager.email);
+      setSelectedBranch(editingManager.branch);
+      setStatus(editingManager.status);
+      setPassword("");
+    } else {
+      resetForm();
+    }
+  }, [editingManager]);
+
+  const resetForm = () => {
+    setFirstName("");
+    setMiddleName("");
+    setLastName("");
+    setEmail("");
+    setPassword("");
+    setSelectedBranch("");
+    setStatus("Active");
+  };
+
+  const handleClose = () => {
+    resetForm();
+    closeManagerModal();
+  };
+
+  const handleSubmit = () => {
+    if (isEditMode && editingManager) {
+      updateManager(editingManager.id, {
+        firstName,
+        middleName,
+        lastName,
+        email,
+        branch: selectedBranch,
+        status,
+      });
+    }
+    // In a real app, create logic would also go here
+    handleClose();
+  };
 
   if (!isManagerModalOpen) return null;
 
@@ -11,23 +72,34 @@ export default function ManagerFormModal() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div
         className="absolute inset-0 bg-[#001F3F]/80 backdrop-blur-sm"
-        onClick={toggleManagerModal}
+        onClick={handleClose}
       ></div>
 
       <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden mx-4">
+        {/* Header */}
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 className="text-lg font-bold text-[#001F3F]">
-            Register Branch Manager
-          </h3>
+          <div>
+            <h3 className="text-lg font-bold text-[#001F3F]">
+              {isEditMode ? "Edit Branch Manager" : "Register Branch Manager"}
+            </h3>
+            {isEditMode && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                MGR-{String(editingManager!.id).padStart(3, "0")} &middot;{" "}
+                Registered {editingManager!.createdAt}
+              </p>
+            )}
+          </div>
           <button
-            onClick={toggleManagerModal}
+            onClick={handleClose}
             className="text-slate-400 hover:text-red-500 transition-colors"
           >
             <X className="size-5" />
           </button>
         </div>
 
+        {/* Body */}
         <div className="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
+          {/* Name fields */}
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
@@ -35,6 +107,8 @@ export default function ManagerFormModal() {
               </label>
               <input
                 type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
                 className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
                 placeholder="e.g. Juan"
               />
@@ -45,6 +119,8 @@ export default function ManagerFormModal() {
               </label>
               <input
                 type="text"
+                value={middleName}
+                onChange={(e) => setMiddleName(e.target.value)}
                 className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
                 placeholder="e.g. Santos"
               />
@@ -55,34 +131,83 @@ export default function ManagerFormModal() {
               </label>
               <input
                 type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
                 className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
                 placeholder="e.g. Dela Cruz"
               />
             </div>
           </div>
 
+          {/* Email */}
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
               Email / Username
             </label>
             <input
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
               placeholder="e.g. juan.delacruz@kickslogix.com"
             />
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
-              Temporary Password
-            </label>
-            <input
-              type="password"
-              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
-              placeholder="Minimum 8 characters"
-            />
-          </div>
+          {/* Password — only show for new managers */}
+          {!isEditMode && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+                Temporary Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
+                placeholder="Minimum 8 characters"
+              />
+            </div>
+          )}
 
+          {/* Status — only show in edit mode */}
+          {isEditMode && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">
+                Status
+              </label>
+              <div className="flex gap-3">
+                {["Active", "Inactive"].map((s) => (
+                  <label
+                    key={s}
+                    className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer transition-all text-sm font-bold ${
+                      status === s
+                        ? s === "Active"
+                          ? "border-green-400 bg-green-50 text-green-700"
+                          : "border-slate-400 bg-slate-50 text-slate-600"
+                        : "border-slate-200 text-slate-400 hover:bg-slate-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="status"
+                      value={s}
+                      checked={status === s}
+                      onChange={() => setStatus(s)}
+                      className="sr-only"
+                    />
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        s === "Active" ? "bg-green-500" : "bg-slate-400"
+                      }`}
+                    ></span>
+                    {s}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Branch assignment */}
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">
               Assign to Branch
@@ -97,6 +222,8 @@ export default function ManagerFormModal() {
                     type="radio"
                     name="branch"
                     value={branch.name}
+                    checked={selectedBranch === branch.name}
+                    onChange={() => setSelectedBranch(branch.name)}
                     className="accent-[#001F3F]"
                   />
                   <div>
@@ -113,15 +240,19 @@ export default function ManagerFormModal() {
           </div>
         </div>
 
+        {/* Footer */}
         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
           <button
-            onClick={toggleManagerModal}
+            onClick={handleClose}
             className="px-4 py-2 text-xs font-bold text-slate-500 uppercase hover:text-slate-700 transition-colors"
           >
             Cancel
           </button>
-          <button className="px-6 py-2 bg-[#001F3F] text-white text-xs font-bold uppercase rounded-lg hover:bg-[#00162e] shadow-md shadow-blue-900/10 transition-all hover:-translate-y-0.5">
-            Register Manager
+          <button
+            onClick={handleSubmit}
+            className="px-6 py-2 bg-[#001F3F] text-white text-xs font-bold uppercase rounded-lg hover:bg-[#00162e] shadow-md shadow-blue-900/10 transition-all hover:-translate-y-0.5"
+          >
+            {isEditMode ? "Save Changes" : "Register Manager"}
           </button>
         </div>
       </div>

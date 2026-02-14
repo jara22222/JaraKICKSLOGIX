@@ -1,13 +1,13 @@
 import { create } from "zustand";
 
 // --- TYPES ---
-type Branch = {
+export type Branch = {
   id: number;
   name: string;
   location: string;
 };
 
-type Manager = {
+export type Manager = {
   id: number;
   firstName: string;
   middleName: string;
@@ -18,7 +18,7 @@ type Manager = {
   createdAt: string;
 };
 
-type Supplier = {
+export type Supplier = {
   id: number;
   companyName: string;
   companyAddress: string;
@@ -29,7 +29,7 @@ type Supplier = {
   createdAt: string;
 };
 
-type AuditLog = {
+export type AuditLog = {
   id: string;
   userId: string;
   userName: string;
@@ -43,12 +43,26 @@ type SuperAdminState = {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 
+  // Manager modal (create/edit)
   isManagerModalOpen: boolean;
   toggleManagerModal: () => void;
+  editingManager: Manager | null;
+  openEditManager: (manager: Manager) => void;
+  closeManagerModal: () => void;
 
+  // Manager CRUD
+  updateManager: (id: number, data: Partial<Manager>) => void;
+  archiveManager: (id: number) => void;
+
+  // Archive confirmation
+  archiveConfirmManager: Manager | null;
+  setArchiveConfirmManager: (manager: Manager | null) => void;
+
+  // Supplier modal
   isSupplierModalOpen: boolean;
   toggleSupplierModal: () => void;
 
+  // Data
   branches: Branch[];
   managers: Manager[];
   suppliers: Supplier[];
@@ -59,10 +73,40 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
   activeTab: "overview",
   setActiveTab: (tab) => set({ activeTab: tab }),
 
+  // Manager modal
   isManagerModalOpen: false,
+  editingManager: null,
   toggleManagerModal: () =>
-    set((state) => ({ isManagerModalOpen: !state.isManagerModalOpen })),
+    set((state) => ({
+      isManagerModalOpen: !state.isManagerModalOpen,
+      editingManager: state.isManagerModalOpen ? null : state.editingManager,
+    })),
+  openEditManager: (manager) =>
+    set({ editingManager: manager, isManagerModalOpen: true }),
+  closeManagerModal: () =>
+    set({ isManagerModalOpen: false, editingManager: null }),
 
+  // Manager CRUD
+  updateManager: (id, data) =>
+    set((state) => ({
+      managers: state.managers.map((m) =>
+        m.id === id ? { ...m, ...data } : m
+      ),
+    })),
+  archiveManager: (id) =>
+    set((state) => ({
+      managers: state.managers.map((m) =>
+        m.id === id ? { ...m, status: "Archived" } : m
+      ),
+      archiveConfirmManager: null,
+    })),
+
+  // Archive confirmation
+  archiveConfirmManager: null,
+  setArchiveConfirmManager: (manager) =>
+    set({ archiveConfirmManager: manager }),
+
+  // Supplier modal
   isSupplierModalOpen: false,
   toggleSupplierModal: () =>
     set((state) => ({ isSupplierModalOpen: !state.isSupplierModalOpen })),
@@ -155,7 +199,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "SA-001",
       userName: "Jara Joaquin",
       action: "CREATE_MANAGER",
-      description: "Created manager account for Michael Jordan — assigned to Davao Main Hub",
+      description:
+        "Created manager account for Michael Jordan — assigned to Davao Main Hub",
       branch: "Davao Main Hub",
       datePerformed: "Feb 14, 2026 09:15 AM",
     },
@@ -164,7 +209,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "MGR-001",
       userName: "Michael Jordan",
       action: "CREATE_STAFF",
-      description: "Created staff account for LeBron James (Inbound Coordinator)",
+      description:
+        "Created staff account for LeBron James (Inbound Coordinator)",
       branch: "Davao Main Hub",
       datePerformed: "Feb 14, 2026 09:30 AM",
     },
@@ -173,7 +219,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "INB-001",
       userName: "LeBron James",
       action: "RECEIVE",
-      description: "Received PO-2026-001 — 500 units Nike Air Jordan 1 High",
+      description:
+        "Received PO-2026-001 — 500 units Nike Air Jordan 1 High",
       branch: "Davao Main Hub",
       datePerformed: "Feb 14, 2026 10:00 AM",
     },
@@ -182,7 +229,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "INB-001",
       userName: "LeBron James",
       action: "PUT_AWAY",
-      description: "Put away 500 units to Bin A-01-05 (Fixed-Bin, FIFO enforced)",
+      description:
+        "Put away 500 units to Bin A-01-05 (Fixed-Bin, FIFO enforced)",
       branch: "Davao Main Hub",
       datePerformed: "Feb 14, 2026 10:20 AM",
     },
@@ -191,7 +239,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "OUT-001",
       userName: "Kobe Bryant",
       action: "PICK",
-      description: "Picked 2x Adidas Ultraboost from Bin C-05-02 for ORD-5502",
+      description:
+        "Picked 2x Adidas Ultraboost from Bin C-05-02 for ORD-5502",
       branch: "Tagum Branch",
       datePerformed: "Feb 14, 2026 10:45 AM",
     },
@@ -200,7 +249,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "OUT-001",
       userName: "Kobe Bryant",
       action: "DISPATCH",
-      description: "Dispatched ORD-5502 via J&T Express — Transit ID: JT-88412",
+      description:
+        "Dispatched ORD-5502 via J&T Express — Transit ID: JT-88412",
       branch: "Tagum Branch",
       datePerformed: "Feb 14, 2026 11:00 AM",
     },
@@ -209,7 +259,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "SYS",
       userName: "System",
       action: "ALERT",
-      description: "Low stock threshold triggered — Air Jordan 1 High (Red) below 10 units",
+      description:
+        "Low stock threshold triggered — Air Jordan 1 High (Red) below 10 units",
       branch: "Davao Main Hub",
       datePerformed: "Feb 14, 2026 11:15 AM",
     },
@@ -218,7 +269,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "MGR-002",
       userName: "Tim Duncan",
       action: "APPROVE",
-      description: "Approved replenishment request REP-012 for Nike Dunk Low (200 units)",
+      description:
+        "Approved replenishment request REP-012 for Nike Dunk Low (200 units)",
       branch: "Tagum Branch",
       datePerformed: "Feb 13, 2026 03:00 PM",
     },
@@ -227,7 +279,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "VAS-001",
       userName: "Stephen Curry",
       action: "PACK",
-      description: "Completed VAS packaging for ORD-5505 — gift bundle with receipt label",
+      description:
+        "Completed VAS packaging for ORD-5505 — gift bundle with receipt label",
       branch: "GenSan Warehouse",
       datePerformed: "Feb 13, 2026 02:15 PM",
     },
@@ -236,7 +289,8 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       userId: "SA-001",
       userName: "Jara Joaquin",
       action: "REGISTER_SUPPLIER",
-      description: "Registered new supplier: New Balance Inc. — Agreement signed",
+      description:
+        "Registered new supplier: New Balance Inc. — Agreement signed",
       branch: "All Branches",
       datePerformed: "Feb 08, 2026 10:00 AM",
     },

@@ -1,12 +1,14 @@
 import SuperAdminHeader from "@/modules/super-admin/components/SuperAdminHeader";
 import ManagerTable from "@/modules/super-admin/components/ManagerTable";
 import ManagerFormModal from "@/modules/super-admin/components/ManagerFormModal";
+import ArchiveManagerModal from "@/modules/super-admin/components/ArchiveManagerModal";
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
 import { Plus, Search } from "lucide-react";
 
 export default function BranchManagers() {
   const { managers, branches, toggleManagerModal } = useSuperAdminStore();
   const activeCount = managers.filter((m) => m.status === "Active").length;
+  const archivedCount = managers.filter((m) => m.status === "Archived").length;
 
   return (
     <>
@@ -25,8 +27,15 @@ export default function BranchManagers() {
             <h3 className="text-3xl font-extrabold text-[#001F3F]">
               {managers.length}
             </h3>
-            <div className="mt-4 flex items-center gap-2 text-xs w-fit px-2 py-1 rounded-full text-green-600 bg-green-50">
-              <span>{activeCount} Active</span>
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-xs px-2 py-1 rounded-full text-green-600 bg-green-50 font-medium">
+                {activeCount} Active
+              </span>
+              {archivedCount > 0 && (
+                <span className="text-xs px-2 py-1 rounded-full text-amber-600 bg-amber-50 font-medium">
+                  {archivedCount} Archived
+                </span>
+              )}
             </div>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-md transition-shadow">
@@ -83,6 +92,7 @@ export default function BranchManagers() {
 
         <ManagerTable />
         <ManagerFormModal />
+        <ArchiveManagerModal />
       </div>
     </>
   );

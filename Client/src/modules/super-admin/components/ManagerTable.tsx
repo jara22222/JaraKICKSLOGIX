@@ -3,11 +3,12 @@ import HeaderCell from "@/shared/components/HeaderCell";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import Pagination from "@/shared/components/Pagination";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Archive } from "lucide-react";
 import { useState } from "react";
 
 export default function ManagerTable() {
-  const managers = useSuperAdminStore((s) => s.managers);
+  const { managers, openEditManager, setArchiveConfirmManager } =
+    useSuperAdminStore();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -21,7 +22,14 @@ export default function ManagerTable() {
     setCurrentPage(1);
   };
 
-  const exportHeaders = ["ID", "Name", "Branch", "Email", "Status", "Registered"];
+  const exportHeaders = [
+    "ID",
+    "Name",
+    "Branch",
+    "Email",
+    "Status",
+    "Registered",
+  ];
   const exportRows = managers.map((mgr) => [
     `MGR-${String(mgr.id).padStart(3, "0")}`,
     `${mgr.firstName} ${mgr.middleName.charAt(0)}. ${mgr.lastName}`,
@@ -35,7 +43,23 @@ export default function ManagerTable() {
     exportToCSV("Branch_Managers", exportHeaders, exportRows);
 
   const handleExportPDF = () =>
-    exportToPDF("Branch_Managers", "Branch Managers Report", exportHeaders, exportRows);
+    exportToPDF(
+      "Branch_Managers",
+      "Branch Managers Report",
+      exportHeaders,
+      exportRows
+    );
+
+  const statusStyles = (status: string) => {
+    switch (status) {
+      case "Active":
+        return "bg-green-50 text-green-700 border-green-200";
+      case "Archived":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      default:
+        return "bg-slate-100 text-slate-500 border-slate-200";
+    }
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -89,11 +113,7 @@ export default function ManagerTable() {
                 </td>
                 <td className="p-3">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                      mgr.status === "Active"
-                        ? "bg-green-50 text-green-700 border-green-200"
-                        : "bg-slate-100 text-slate-500 border-slate-200"
-                    }`}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusStyles(mgr.status)}`}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
                     {mgr.status}
@@ -101,12 +121,22 @@ export default function ManagerTable() {
                 </td>
                 <td className="p-3 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <button className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg transition-colors">
+                    <button
+                      onClick={() => openEditManager(mgr)}
+                      title="Edit manager"
+                      className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg transition-colors"
+                    >
                       <Pencil className="size-4" />
                     </button>
-                    <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 className="size-4" />
-                    </button>
+                    {mgr.status !== "Archived" && (
+                      <button
+                        onClick={() => setArchiveConfirmManager(mgr)}
+                        title="Archive manager"
+                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                      >
+                        <Archive className="size-4" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -115,7 +145,10 @@ export default function ManagerTable() {
         </table>
       </div>
       <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
-        <ExportToolbar onExportCSV={handleExportCSV} onExportPDF={handleExportPDF} />
+        <ExportToolbar
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+        />
         <Pagination
           currentPage={currentPage}
           totalItems={managers.length}
