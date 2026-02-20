@@ -15,7 +15,6 @@ export default function ManagerFormModal() {
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [status, setStatus] = useState("Active");
 
@@ -30,7 +29,6 @@ export default function ManagerFormModal() {
       setEmail(editingManager.email);
       setSelectedBranch(editingManager.branch);
       setStatus(editingManager.status);
-      setPassword("");
     } else {
       resetForm();
     }
@@ -41,7 +39,7 @@ export default function ManagerFormModal() {
     setMiddleName("");
     setLastName("");
     setEmail("");
-    setPassword("");
+
     setSelectedBranch("");
     setStatus("Active");
   };
@@ -100,7 +98,7 @@ export default function ManagerFormModal() {
         {/* Body */}
         <div className="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
           {/* Name fields */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="flex flex-col gap-4">
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
                 First Name
@@ -152,23 +150,6 @@ export default function ManagerFormModal() {
               placeholder="e.g. juan.delacruz@kickslogix.com"
             />
           </div>
-
-          {/* Password — only show for new managers */}
-          {!isEditMode && (
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
-                Temporary Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
-                placeholder="Minimum 8 characters"
-              />
-            </div>
-          )}
-
           {/* Status — only show in edit mode */}
           {isEditMode && (
             <div>
