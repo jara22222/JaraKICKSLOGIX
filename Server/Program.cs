@@ -2,18 +2,24 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Server.Data;   // Added to find ApplicationDbContext
-using Server.Models; // Added to find the Users model
+using Server.Data; 
+using Server.Models; 
+using Server.Data.Seeders;
+using Server.Services;
+using Server.Hubs;
+using Scalar.AspNetCore;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 
 builder.Services.AddIdentity<Users, IdentityRole>(options => {
     options.Password.RequireDigit = true;
@@ -29,8 +35,6 @@ builder.Services.AddAuthentication(options => {
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme; // Fixed typos
     options.DefaultForbidScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultSignOutScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options => {
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -46,22 +50,39 @@ builder.Services.AddAuthentication(options => {
 });
 
 
-builder.Services.AddAuthorization();
 
+
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<TokenService>();
+builder.Services.AddControllers();
+builder.Services.AddSignalR();
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapScalarApiReference(); // The beautiful new UI!
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        await DbSeeder.SeedAsync(scope.ServiceProvider);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Seeder error: {ex.Message}");
+        Console.WriteLine(ex.StackTrace);
+    }
 }
 
 app.UseHttpsRedirection(); // The broken duplicate was removed above this
-
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapControllers();
 
 var summaries = new[]
 {
@@ -81,7 +102,12 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
-
+app.MapHub<SupplierHub>("/supplierHub");
+app.MapHub<ManagerHub>("/managerHub");
+app.MapHub<UpdateManagerHub>("/update-managerHub");
+app.MapHub<ArchiveUserHub>("/archive-managerHub");
+app.MapHub<GetAllManagerHub>("/getAll-managerHub");
+app.MapHub<SearchManagerHub>("/search-managerHub");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

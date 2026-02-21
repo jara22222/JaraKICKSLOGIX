@@ -15,6 +15,7 @@ namespace Server.Data
         {
             
         }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
     }
 }
