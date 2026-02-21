@@ -49,9 +49,6 @@ D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Microsoft.SqlServer.Server.dll
 D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Microsoft.VisualStudio.SolutionPersistence.dll
 D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Mono.TextTemplating.dll
 D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Newtonsoft.Json.dll
-D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Swashbuckle.AspNetCore.Swagger.dll
-D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
-D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\System.ClientModel.dll
 D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\System.CodeDom.dll
 D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\System.Composition.AttributedModel.dll
@@ -161,3 +158,8 @@ D:\IT15-KICKSLOGIX\server\obj\Debug\net10.0\refint\Server.dll
 D:\IT15-KICKSLOGIX\server\obj\Debug\net10.0\Server.pdb
 D:\IT15-KICKSLOGIX\server\obj\Debug\net10.0\Server.genruntimeconfig.cache
 D:\IT15-KICKSLOGIX\server\obj\Debug\net10.0\ref\Server.dll
+D:\IT15-KICKSLOGIX\server\obj\Debug\net10.0\Server.sourcelink.json
+D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Microsoft.AspNetCore.Http.Connections.Client.dll
+D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Microsoft.AspNetCore.SignalR.Client.dll
+D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Microsoft.AspNetCore.SignalR.Client.Core.dll
+D:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Scalar.AspNetCore.dll
