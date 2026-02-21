@@ -15,6 +15,21 @@ namespace Server.Data
         {
             
         }
+        public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<Products> Products { get; set; }
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            // Always call the base method first for Identity tables
+            base.OnModelCreating(builder);
+
+            // Step 2: Configure the One-to-Many Relationship
+            builder.Entity<Products>()
+                .HasOne(p => p.User)            // Product has 1 User (Manager)
+                .WithMany(u => u.Products)      // User has Many Products
+                .HasForeignKey(p => p.SupplierId)   // Link them via UserId
+                .OnDelete(DeleteBehavior.Cascade); // If User is deleted, delete their products (or use .Restrict to prevent deletion)
+        }
+
 
     }
 }
