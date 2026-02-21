@@ -21,6 +21,7 @@ namespace Server.Models
         [MaxLength(50)]
         public string Address { get; set; } = string.Empty;
         public string IsActive { get; set; } = string.Empty;
+        public virtual ICollection<Products> Products { get; set; } = new List<Products>();
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
     }
