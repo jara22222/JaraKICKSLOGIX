@@ -38,6 +38,7 @@ namespace Server.Controllers
         {
             try
             {
+                
                 var managers = await (
                     from user in _userManager.Users
                     join userRole in _context.UserRoles on user.Id equals userRole.UserId
