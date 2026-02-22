@@ -36,7 +36,9 @@ namespace Server.Controllers
         {
             try
             {
-
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUser = await _userManager.FindByIdAsync(currentUserId ?? "");
+            var branchName = currentUser?.Branch ?? "N/A";
             var user = await _userManager.FindByIdAsync(id);
               if(user == null) return NotFound(new { message = "Manager not found." });
             var previousUser = user.UserName;
@@ -65,14 +67,15 @@ namespace Server.Controllers
                 if(result.Succeeded)
                 {
                   
-                    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System";
+                    
                     var currentUserName = User.Identity?.Name ?? "Admin";
 
                 // 2. Create the clean, human-readable log
                 var auditLog = new AuditLog
                 {
-                    UserId = currentUserId,
+                    UserId = currentUserId ?? "N/A",
                     Action = "Update",
+                    Branch= branchName,
                     PerformedBy = currentUserName,
                     Description =$"{currentUserName} updated branch manager: {previousUser} to {ManagerUser}", // e.g., "Created supplier: Supplier1"
                     DatePerformed = DateTime.UtcNow
