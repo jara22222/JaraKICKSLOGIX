@@ -36,6 +36,9 @@ namespace Server.Controllers
         {
             try
             {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUser = await _userManager.FindByIdAsync(currentUserId ?? "");
+            var branchName = currentUser?.Branch ?? "N/A";
 
             var user = await _userManager.FindByIdAsync(id);
               if(user == null) return NotFound(new { message = "Manager not found." });
@@ -52,14 +55,15 @@ namespace Server.Controllers
                 if(result.Succeeded)
                 {
                   
-                    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System";
+                    
                     var currentUserName = User.Identity?.Name ?? "Admin";
 
                 
                 var auditLog = new AuditLog
                 {
-                    UserId = currentUserId,
+                    UserId = currentUserId ?? "N/A",
                     Action = "Archive",
+                    Branch = branchName,
                     PerformedBy = currentUserName,
                     Description =$"{currentUserName} Archive branch manager: {previousUser}", // e.g., "Created supplier: Supplier1"
                     DatePerformed = DateTime.UtcNow

@@ -7,6 +7,7 @@ using Server.Models;
 using Server.Data.Seeders;
 using Server.Services;
 using Server.Hubs;
+using Server.Hubs.BranchManagerHub;
 using Scalar.AspNetCore;
 
 
@@ -108,6 +109,7 @@ app.MapHub<UpdateManagerHub>("/update-managerHub");
 app.MapHub<ArchiveUserHub>("/archive-managerHub");
 app.MapHub<GetAllManagerHub>("/getAll-managerHub");
 app.MapHub<SearchManagerHub>("/search-managerHub");
+app.MapHub<BranchAccountHub>("/branchAccount-managerHub");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

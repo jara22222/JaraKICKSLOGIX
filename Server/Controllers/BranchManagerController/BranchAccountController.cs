@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using Server.Hubs;
-using Server.DTO;
+using Server.Hubs.BranchManagerHub;
+using Server.DTO.BranchAccountDto;
 using Server.Models;
 using Server.Services;
 using Server.Data;  
@@ -12,17 +12,17 @@ namespace Server.Controllers
 
 {   [Route("api/[controller]")]
     [ApiController]
-    public class ManagerAccountController:ControllerBase
+    public class BranchAccountController:ControllerBase
     {
         private readonly UserManager<Users> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly IHubContext<SupplierHub> _hubContext;    
+        private readonly IHubContext<BranchAccountHub> _hubContext;    
         private readonly ApplicationDbContext _context;
 
-        public ManagerAccountController(
+        public BranchAccountController(
             UserManager<Users> user,
             RoleManager<IdentityRole> role,
-            IHubContext<SupplierHub> hubContext,
+            IHubContext<BranchAccountHub> hubContext,
             ApplicationDbContext context)
         {
             _userManager = user;
@@ -31,37 +31,45 @@ namespace Server.Controllers
             _context = context;
         }
     
-        [Authorize(Roles = "SuperAdmin")]
-        [HttpPost("register-manager")]
-        public async Task<IActionResult> PostAsync([FromBody] ManagerDto managerDto)
+        [Authorize(Roles = "BranchManager")]
+        [HttpPost("registe-branchAccount")]
+        public async Task<IActionResult> PostAsync([FromBody] BranchAccountDto branchAccountDto)
         {
             try
             {
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 var currentUser = await _userManager.FindByIdAsync(currentUserId ?? "");
                 var branchName = currentUser?.Branch ?? "N/A";
-               var ManagerUser = managerDto.MiddleName != null
-                    ? (managerDto.FirstName ?? "") + managerDto.MiddleName + (managerDto.LastName ?? "")
-                    : (managerDto.FirstName ?? "") + (managerDto.LastName ?? "");
+                var currentUserName = currentUser?.UserName ?? "N/A";
+                var firstName = branchAccountDto.FirstName ?? "";
+                var lastName = branchAccountDto.LastName ?? "";
+                var middleName = branchAccountDto.MiddleName ?? "";
+                var accountName = $"{firstName}{middleName}{lastName}".Replace(" ", "");
+                var AccountName = branchAccountDto.MiddleName != null
+                    ? (branchAccountDto.FirstName ?? "") + branchAccountDto.MiddleName + (branchAccountDto.LastName ?? "")
+                    : (branchAccountDto.FirstName ?? "") + (branchAccountDto.LastName ?? "");
+                var AccountPassword =  branchAccountDto.LastName + "123";
+
+                
                 var newManagerUser = new Users
                 {
-                    UserName = ManagerUser.Replace(" ",""),
-                    Email = managerDto.Email,
-                    FirstName = managerDto.FirstName ?? "N/A",
-                    MiddleName = managerDto.MiddleName ?? "",
-                    LastName = managerDto.LastName ?? "N/A",
-                    Branch = managerDto.Branch ?? "N/A",
-                    Address = managerDto.Address ?? "N/A",
+                    UserName = accountName,
+                    Email = branchAccountDto.Email,
+                    FirstName = firstName,
+                    MiddleName = middleName,
+                    LastName = lastName,
+                    Branch = branchName, 
+                    Address = branchAccountDto.Address ?? "N/A",
                     IsActive = "Active",
                     EmailConfirmed = true
                 };
 
-                var result = await _userManager.CreateAsync(newManagerUser, "Manager@2026");
+                var result = await _userManager.CreateAsync(newManagerUser,"KicksLogix@2026");
 
 
                 if(result.Succeeded)
                 {
-                    string roleName = "BranchManager";
+                    string roleName = branchAccountDto.RoleName?? "N/A";
 
                     if(!await _roleManager.RoleExistsAsync(roleName))
                     {
@@ -70,25 +78,24 @@ namespace Server.Controllers
 
                     await _userManager.AddToRoleAsync(newManagerUser,roleName);
 
-                    await _hubContext.Clients.All.SendAsync("ReceiveNewBranchManager", new
+                    await _hubContext.Clients.All.SendAsync("ReceiveNewBranchUser", new
                     {
-                        UserName =ManagerUser,
-                        Email = managerDto.Email,
+                        UserName =accountName,
+                        Email = branchAccountDto.Email,
                         IsActive = "Active",
                         Message =  "A new branch manager has joined!"
                     });
 
-                     
-                    var currentUserName = User.Identity?.Name ?? "Admin";
+                    
 
                 // 2. Create the clean, human-readable log
                 var auditLog = new AuditLog
                 {
-                    UserId = currentUserId ?? "N/A",
+                    UserId = currentUserId??"N/A",
                     Action = "Create",
                     Branch = branchName,
                     PerformedBy = currentUserName,
-                    Description =$"{currentUserName} created branch manager: {ManagerUser}", // e.g., "Created supplier: Supplier1"
+                    Description =$"{currentUserName} created branch user: {accountName}", // e.g., "Created supplier: Supplier1"
                     DatePerformed = DateTime.UtcNow
                 };
 
@@ -99,7 +106,7 @@ namespace Server.Controllers
 
 
                     return Ok(new {
-                        message= "Branch Manager account created and role assigned successfully!"
+                        message= "Branch user created and role assigned successfully!"
                     });
                 }
                 return BadRequest(result.Errors);
