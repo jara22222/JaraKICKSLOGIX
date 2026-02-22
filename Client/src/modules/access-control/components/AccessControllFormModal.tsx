@@ -72,15 +72,21 @@ export default function AccessControllFormModal() {
               </button>
             </div>
 
-            <div className="p-8 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-8 overflow-y-auto h-[600px] space-y-6">
+              <div className="flex flex-col gap-4">
                 <InputField label="First Name" placeholder="e.g. Juan" />
+                <InputField label="Middle Initial" placeholder="e.g. T" />
                 <InputField label="Last Name" placeholder="e.g. Dela Cruz" />
               </div>
 
               <InputField
-                label="Email / Username"
-                placeholder="e.g. juan.delacruz@kickslogix.com"
+                label="Email"
+                placeholder="e.g. juandelacruz@gmail.com"
+                type="email"
+              />
+              <InputField
+                label="Address"
+                placeholder="e.g. Juan Luna st. Davao City"
                 type="email"
               />
 
@@ -92,17 +98,22 @@ export default function AccessControllFormModal() {
                   <RoleRadio
                     title="Warehouse Manager"
                     desc="Full branch access, Reports, User Mgmt"
-                    value="manager"
+                    value="BranchManager"
                   />
                   <RoleRadio
                     title="Inbound Coordinator"
                     desc="Receiving, Put-away, Supplier Liaison"
-                    value="inbound"
+                    value="InboundCoordinator"
                   />
                   <RoleRadio
                     title="Outbound / Dispatcher"
                     desc="Picking, Packing, Courier Handover"
-                    value="outbound"
+                    value="OutboundCoordinator"
+                  />
+                  <RoleRadio
+                    title="Vas Personel"
+                    desc="Packing and labeling customer order"
+                    value="VASPersonnel"
                   />
                 </div>
               </div>
