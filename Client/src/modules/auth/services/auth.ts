@@ -1,3 +1,5 @@
+import apiClient from "@/api/apiClient";
+
 export interface User {
   id: string;
   userName: string;
