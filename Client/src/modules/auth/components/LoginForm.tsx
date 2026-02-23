@@ -5,40 +5,8 @@ import {
   InputGroupAddon,
 } from "@/shared/components/ui/input-group";
 import { LockIcon, User } from "lucide-react";
+
 export default function LoginForm() {
-<<<<<<< HEAD
-=======
-  const navigate = useNavigate();
-  const [form, setForm] = useState<LoginCredentials>({
-    userName: "",
-    password: "",
-  });
-
-  const mutation = useMutation({
-    mutationFn: loginUser,
-    onSuccess: (data) => {
-      // 1. Store token
-      localStorage.setItem("token", data.token);
-      // 2. Store user info (optional, or use a state manager)
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      console.log("Login Successful:", data.user.userName);
-      navigate("/superadmin"); // Redirect after login
-    },
-    onError: (error: AxiosError<any>) => {
-      // Now TypeScript knows 'error.response' exists
-      console.log(error.response?.data);
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    mutation.mutate(form);
-  };
-  const getFieldError = (fieldName: "UserName" | "Password") => {
-    return mutation.error?.response?.data?.errors?.[fieldName]?.[0];
-  };
->>>>>>> Temp-fixed
   return (
     <>
       <div className="w-full text-[#001F3F] flex flex-col gap-5 max-w-md">
