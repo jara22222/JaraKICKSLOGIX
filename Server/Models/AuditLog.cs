@@ -16,6 +16,7 @@ namespace Server.Models
         public string Description { get; set; } = string.Empty;
         [MaxLength(50)]
         public string? Branch { get; set; } = string.Empty;
+        
         public DateTime DatePerformed { get; set; } = DateTime.UtcNow;
     }
 }
