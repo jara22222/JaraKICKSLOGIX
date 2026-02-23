@@ -3,16 +3,13 @@ import {
   ChevronRight,
   Eye,
   Footprints,
-  LogOut,
   ScrollText,
-  Settings,
+  ShieldCheck,
   Truck,
   Users,
 } from "lucide-react";
 
 import { Link, useLocation } from "react-router-dom";
-import { UseAuth } from "../security/UseAuth";
-import { useEffect, useRef, useState } from "react";
 
 const NavItem = ({
   icon,
@@ -54,20 +51,6 @@ const NavItem = ({
 };
 
 export default function SuperAdminSidebar() {
-  const { user, logout } = UseAuth();
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
   return (
     <aside className="w-20 hidden lg:flex lg:w-64 bg-[#001F3F] h-full flex-col justify-between flex-shrink-0 z-50 transition-all duration-300 shadow-2xl">
       {/* Logo Area */}
@@ -84,13 +67,18 @@ export default function SuperAdminSidebar() {
           </span>
         </div>
       </div>
+
       {/* Nav Links */}
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto py-4 scrollbar-hide">
         <p className="px-2 text-[10px] hidden lg:block font-bold text-slate-400 uppercase tracking-widest mb-2">
           God View
         </p>
 
-        <NavItem icon={<Eye className="size-5" />} label="Overview" link="" />
+        <NavItem
+          icon={<Eye className="size-5" />}
+          label="Overview"
+          link=""
+        />
         <NavItem
           icon={<Users className="size-5" />}
           label="Branch Managers"
@@ -119,64 +107,22 @@ export default function SuperAdminSidebar() {
           link="/accesscontroll"
         />
       </nav>
-      <div className="relative p-4 border-t border-white/10" ref={menuRef}>
-        {/* --- Dropdown Menu --- */}
-        {isOpen && (
-          <div className="absolute bottom-full left-4 mb-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <div className="p-3 border-b border-slate-100 bg-slate-50/50">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Account
-              </p>
-              <p className="text-sm font-bold text-slate-800 truncate">
-                {user?.email || "user@kickslogix.com"}
-              </p>
-            </div>
 
-            <div className="p-2">
-              <Link
-                to="/settings/profile"
-                className="flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <Settings className="size-4" />
-                Account Settings
-              </Link>
-
-              <button
-                onClick={logout}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <LogOut className="size-4" />
-                Sign Out
-              </button>
-            </div>
+      {/* User Profile */}
+      <div className="p-4 border-t border-white/10">
+        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors group">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-600 border-2 border-[#FFD700]/30 flex items-center justify-center">
+            <ShieldCheck className="size-4 text-[#001F3F]" />
           </div>
-        )}
-
-        {/* --- Profile Toggle --- */}
-        <div
-          onClick={() => setIsOpen(!isOpen)}
-          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all group ${
-            isOpen ? "bg-white/10" : "hover:bg-white/5"
-          }`}
-        >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-400 to-blue-600 border border-white/20 flex items-center justify-center text-white text-xs font-bold">
-            {user?.firstName?.charAt(0) || "J"}
-          </div>
-
-          <div className="flex flex-col text-sm font-medium hidden lg:block">
+          <div className="hidden lg:flex flex-col">
             <span className="text-xs font-bold text-white group-hover:text-[#FFD700] transition-colors">
-              {user?.firstName} {user?.lastName}
+              Jara Joaquin
             </span>
             <span className="text-[10px] text-[#FFD700] uppercase tracking-wide opacity-80">
-              {user?.roles?.[0] || "Super Admin"}
+              Super Admin
             </span>
           </div>
-
-          <div className="hidden lg:block ml-auto">
-            <ChevronRight
-              className={`size-4 text-slate-500 transition-transform duration-200 ${isOpen ? "-rotate-90" : ""}`}
-            />
-          </div>
+          <ChevronRight className="size-4 text-slate-500 ml-auto hidden lg:block group-hover:text-white transition-colors" />
         </div>
       </div>
     </aside>
