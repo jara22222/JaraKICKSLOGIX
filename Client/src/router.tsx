@@ -48,6 +48,8 @@ import LandingPage from "./modules/landing/pages/LandingPage";
 // Shared
 import Loader from "./shared/components/Loader";
 import NotFound from "./shared/pages/NotFound";
+//BinLocation
+import BinLocation from "./modules/binlocation/pages/BinLocation";
 
 // Lazy-loaded Auth
 const Login = lazy(() => import("./modules/auth/pages/Login"));
@@ -322,6 +324,15 @@ export const router = createBrowserRouter([
         ),
       },
     ],
+  },
+
+  {
+    path: "binlocation/product/:id",
+    element: (
+      <Suspense>
+        <BinLocation />
+      </Suspense>
+    ),
   },
 
   // ─── 404 CATCH-ALL ─────────────────────────────
