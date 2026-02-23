@@ -12,7 +12,21 @@ using Scalar.AspNetCore;
 
 
 var builder = WebApplication.CreateBuilder(args);
+<<<<<<< HEAD
 
+=======
+//Add cors services
+builder.Services.AddCors(options => 
+{
+    options.AddPolicy("MyAllowSpecificOrigins",
+    policy=>{
+        policy.WithOrigins(
+            "http://localhost:5173",
+            "https://jara-kickslogix.vercel.app"
+        ).AllowAnyHeader().AllowAnyMethod();
+    });
+});
+>>>>>>> Temp-fixed
 // Add services to the container.
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
