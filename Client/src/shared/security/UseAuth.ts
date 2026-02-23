@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useCallback } from "react";
 
+//Done resolving
 export const UseAuth = () => {
   const navigate = useNavigate();
 
