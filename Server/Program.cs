@@ -12,6 +12,12 @@ using Scalar.AspNetCore;
 
 
 var builder = WebApplication.CreateBuilder(args);
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+=======
+=======
+>>>>>>> 264d6defb3e917b937fb8f5d9fb7a5d65618569a
 //Add cors services
 builder.Services.AddCors(options => 
 {
@@ -23,6 +29,11 @@ builder.Services.AddCors(options =>
         ).AllowAnyHeader().AllowAnyMethod();
     });
 });
+<<<<<<< HEAD
+>>>>>>> Temp-fixed
+=======
+
+>>>>>>> 264d6defb3e917b937fb8f5d9fb7a5d65618569a
 // Add services to the container.
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
@@ -89,8 +100,7 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine(ex.StackTrace);
     }
 }
-app.UseRouting();
-app.UseCors("MyAllowSpecificOrigins");
+
 app.UseHttpsRedirection(); // The broken duplicate was removed above this
 app.UseAuthentication();
 app.UseAuthorization();
