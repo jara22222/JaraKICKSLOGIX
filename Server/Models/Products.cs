@@ -17,7 +17,7 @@ namespace Server.Models
         [MaxLength(3)]
         public string Size { get; set; } = string.Empty;
         [MaxLength(255)]
-        public string QrString { get; set; }  = string.Empty;
+        public string QrString { get; set; }
         [MaxLength(20)]
         public int? CriticalThreshold { get; set; }
         public DateTime DateReceived { get; set; } = DateTime.UtcNow;
