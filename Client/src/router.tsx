@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 
 // Layouts
@@ -45,11 +45,11 @@ import VASActivityLog from "./modules/vas/pages/VASActivityLog";
 // Landing Page
 import LandingPage from "./modules/landing/pages/LandingPage";
 
-// Shared
-import Loader from "./shared/components/Loader";
 import NotFound from "./shared/pages/NotFound";
 //BinLocation
 import BinLocation from "./modules/binlocation/pages/BinLocation";
+import ProtectedRoute from "./shared/security/ProtectedRoute";
+import PublicRouteGuard from "./shared/security/PublicRouteGuard";
 
 // Lazy-loaded Auth
 const Login = lazy(() => import("./modules/auth/pages/Login"));
@@ -57,62 +57,41 @@ const Login = lazy(() => import("./modules/auth/pages/Login"));
 export const router = createBrowserRouter([
   // ─── LANDING PAGE ───────────────────────────────
   {
-    path: "/",
-    element: <LandingPage />,
-    errorElement: <NotFound />,
+    element: <PublicRouteGuard />,
+    children: [
+      { path: "/", element: <LandingPage /> },
+      {
+        path: "/login",
+        element: <Login />,
+      },
+    ],
   },
 
   // ─── AUTH ──────────────────────────────────────
   {
-    path: "/login",
-    element: (
-      <Suspense fallback={<Loader />}>
-        <Login />
-      </Suspense>
-    ),
-    errorElement: <NotFound />,
-  },
-
-  // ─── SUPER ADMIN (God View) ────────────────────
-  {
-    path: "/superadmin",
-    element: (
-      <Suspense fallback={<Loader />}>
-        <SuperAdminLayout />
-      </Suspense>
-    ),
+    element: <PublicRouteGuard />,
     children: [
       {
-        index: true,
-        element: (
-          <Suspense fallback={<Loader />}>
-            <SuperAdminOverview />
-          </Suspense>
-        ),
+        path: "/login",
+        element: <Login />,
+        errorElement: <NotFound />,
       },
+    ],
+  },
+
+  {
+    element: <ProtectedRoute allowedRoles={["SuperAdmin"]} />,
+    children: [
+      // ─── SUPER ADMIN (God View) ────────────────────
       {
-        path: "managers",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <BranchManagers />
-          </Suspense>
-        ),
-      },
-      {
-        path: "suppliers",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <SupplierRegistry />
-          </Suspense>
-        ),
-      },
-      {
-        path: "auditlogs",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <AuditLogs />
-          </Suspense>
-        ),
+        path: "/superadmin",
+        element: <SuperAdminLayout />,
+        children: [
+          { index: true, element: <SuperAdminOverview /> },
+          { path: "managers", element: <BranchManagers /> },
+          { path: "suppliers", element: <SupplierRegistry /> },
+          { path: "auditlogs", element: <AuditLogs /> },
+        ],
       },
     ],
   },
@@ -120,51 +99,27 @@ export const router = createBrowserRouter([
   // ─── INBOUND COORDINATOR ─────────────────────
   {
     path: "/inbound",
-    element: (
-      <Suspense fallback={<Loader />}>
-        <InboundLayout />
-      </Suspense>
-    ),
+    element: <InboundLayout />,
     children: [
       {
         index: true,
-        element: (
-          <Suspense fallback={<Loader />}>
-            <InboundDashboard />
-          </Suspense>
-        ),
+        element: <InboundDashboard />,
       },
       {
         path: "incoming",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <IncomingShipments />
-          </Suspense>
-        ),
+        element: <IncomingShipments />,
       },
       {
         path: "receivinglog",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <ReceivingLog />
-          </Suspense>
-        ),
+        element: <ReceivingLog />,
       },
       {
         path: "activity",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <InboundActivity />
-          </Suspense>
-        ),
+        element: <InboundActivity />,
       },
       {
         path: "putaway",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <PutAwayLabels />
-          </Suspense>
-        ),
+        element: <PutAwayLabels />,
       },
     ],
   },
@@ -172,43 +127,23 @@ export const router = createBrowserRouter([
   // ─── OUTBOUND COORDINATOR (Mobile-First) ───────
   {
     path: "/outbound",
-    element: (
-      <Suspense fallback={<Loader />}>
-        <OutboundLayout />
-      </Suspense>
-    ),
+    element: <OutboundLayout />,
     children: [
       {
         index: true,
-        element: (
-          <Suspense fallback={<Loader />}>
-            <OutboundDashboard />
-          </Suspense>
-        ),
+        element: <OutboundDashboard />,
       },
       {
         path: "reassign",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <BinReassignment />
-          </Suspense>
-        ),
+        element: <BinReassignment />,
       },
       {
         path: "picklist",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <PickList />
-          </Suspense>
-        ),
+        element: <PickList />,
       },
       {
         path: "activity",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <OutboundActivityLog />
-          </Suspense>
-        ),
+        element: <OutboundActivityLog />,
       },
     ],
   },
@@ -216,43 +151,23 @@ export const router = createBrowserRouter([
   // ─── VAS PERSONNEL (Mobile-First) ──────────────
   {
     path: "/vas",
-    element: (
-      <Suspense fallback={<Loader />}>
-        <VASLayout />
-      </Suspense>
-    ),
+    element: <VASLayout />,
     children: [
       {
         index: true,
-        element: (
-          <Suspense fallback={<Loader />}>
-            <VASDashboard />
-          </Suspense>
-        ),
+        element: <VASDashboard />,
       },
       {
         path: "incoming",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <VASIncoming />
-          </Suspense>
-        ),
+        element: <VASIncoming />,
       },
       {
         path: "processing",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <VASProcessing />
-          </Suspense>
-        ),
+        element: <VASProcessing />,
       },
       {
         path: "activity",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <VASActivityLog />
-          </Suspense>
-        ),
+        element: <VASActivityLog />,
       },
     ],
   },
@@ -260,79 +175,43 @@ export const router = createBrowserRouter([
   // ─── ADMIN / MANAGER ───────────────────────────
   {
     path: "/accesscontroll",
-    element: (
-      <Suspense fallback={<Loader />}>
-        <AccessControlRootLayout />
-      </Suspense>
-    ),
+    element: <AccessControlRootLayout />,
     children: [
       {
         index: true,
         path: "",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <Overview />
-          </Suspense>
-        ),
+        element: <Overview />,
       },
       {
         path: "accessmanagement",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <AdminAccessControl />
-          </Suspense>
-        ),
+        element: <AdminAccessControl />,
       },
       {
         path: "suppliermanagement",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <SupplierManagement />
-          </Suspense>
-        ),
+        element: <SupplierManagement />,
       },
       {
         path: "binmanagement",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <BinLocationManagement />
-          </Suspense>
-        ),
+        element: <BinLocationManagement />,
       },
       {
         path: "inboundmanagement",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <InboundManagement />
-          </Suspense>
-        ),
+        element: <InboundManagement />,
       },
       {
         path: "outboundmanagement",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <OutboundManagement />
-          </Suspense>
-        ),
+        element: <OutboundManagement />,
       },
       {
         path: "inventorymanagement",
-        element: (
-          <Suspense fallback={<Loader />}>
-            <InventoryManagement />
-          </Suspense>
-        ),
+        element: <InventoryManagement />,
       },
     ],
   },
 
   {
     path: "binlocation/product/:id",
-    element: (
-      <Suspense>
-        <BinLocation />
-      </Suspense>
-    ),
+    element: <BinLocation />,
   },
 
   // ─── 404 CATCH-ALL ─────────────────────────────
