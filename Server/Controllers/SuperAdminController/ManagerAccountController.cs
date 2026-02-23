@@ -40,7 +40,7 @@ namespace Server.Controllers
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 var currentUser = await _userManager.FindByIdAsync(currentUserId ?? "");
                 var branchName = currentUser?.Branch ?? "N/A";
-               var ManagerUser = managerDto.MiddleName != null
+                var ManagerUser = managerDto.MiddleName != null
                     ? (managerDto.FirstName ?? "") + managerDto.MiddleName + (managerDto.LastName ?? "")
                     : (managerDto.FirstName ?? "") + (managerDto.LastName ?? "");
                 var newManagerUser = new Users
