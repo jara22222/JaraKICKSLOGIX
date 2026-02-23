@@ -23,6 +23,7 @@ builder.Services.AddCors(options =>
         ).AllowAnyHeader().AllowAnyMethod();
     });
 });
+
 // Add services to the container.
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
@@ -89,8 +90,7 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine(ex.StackTrace);
     }
 }
-app.UseRouting();
-app.UseCors("MyAllowSpecificOrigins");
+
 app.UseHttpsRedirection(); // The broken duplicate was removed above this
 app.UseAuthentication();
 app.UseAuthorization();
