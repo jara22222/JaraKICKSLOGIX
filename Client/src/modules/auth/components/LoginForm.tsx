@@ -26,7 +26,7 @@ export default function LoginForm() {
       localStorage.setItem("user", JSON.stringify(data.user));
 
       console.log("Login Successful:", data.user.userName);
-      navigate("/accesscontroll"); // Redirect after login
+      navigate("/superadmin"); // Redirect after login
     },
     onError: (error: AxiosError<any>) => {
       // Now TypeScript knows 'error.response' exists

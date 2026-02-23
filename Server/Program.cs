@@ -18,7 +18,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("MyAllowSpecificOrigins",
     policy=>{
         policy.WithOrigins(
-            "http://localhost:5173"
+            "http://localhost:5173",
+            "https://jara-kickslogix.vercel.app"
         ).AllowAnyHeader().AllowAnyMethod();
     });
 });
