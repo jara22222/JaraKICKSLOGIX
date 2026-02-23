@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+import apiClient from "@/api/apiClient";
+>>>>>>> Temp-fixed
 //added new client
 export interface User {
   id: string;
