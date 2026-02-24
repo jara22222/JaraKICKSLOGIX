@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Server.Hubs;
 using Server.DTO;
 using Server.Models;
@@ -33,7 +34,7 @@ namespace Server.Controllers
     
         [Authorize(Roles = "SuperAdmin")]
         [HttpPost("register-supplier")]
-        public async Task<IActionResult> PostAsync([FromBody] SupplierDto supplierDto)
+        public async Task<ActionResult<ApiMessageDto>> PostAsync([FromBody] SupplierDto supplierDto)
         {
             try
             {
@@ -45,9 +46,10 @@ namespace Server.Controllers
                 {
                     UserName = supplierDto.CompanyName,
                     Email = supplierDto.Email,
-                    FirstName = "Supplier",
+                    FirstName = supplierDto.ContactPerson,
                     LastName = "Supplier",
                     Address =  supplierDto.CompanyAddress,
+                    IsActive = supplierDto.Agreement ? "Active" : "Pending",
                     EmailConfirmed = true
                 };
 
@@ -64,12 +66,16 @@ namespace Server.Controllers
                     }
                     await _userManager.AddToRoleAsync(newSupplierUser,roleName);
 
-                    await _hubContext.Clients.All.SendAsync("ReceiveNewSupplier", new
+                    var supplierHubEvent = new SupplierHubEventDto
                     {
+                        UserId = newSupplierUser.Id,
                         CompanyName = supplierDto.CompanyName,
                         Email = supplierDto.Email,
-                        Message =  "A new supplier has joined!"
-                    });
+                        Status = newSupplierUser.IsActive,
+                        Message = "A new supplier has joined!"
+                    };
+                    await _hubContext.Clients.All.SendAsync("ReceiveNewSupplier", supplierHubEvent);
+                    await _hubContext.Clients.All.SendAsync("SupplierCreated", supplierHubEvent);
 
                 
                 var currentUserName = User.Identity?.Name ?? "Admin";
@@ -91,8 +97,9 @@ namespace Server.Controllers
 
 
 
-                    return Ok(new {
-                        message= "Supplier account created and role assigned successfully!"
+                    return Ok(new ApiMessageDto
+                    {
+                        Message = "Supplier account created and role assigned successfully!"
                     });
                 }
                 return BadRequest(result.Errors);
@@ -100,12 +107,159 @@ namespace Server.Controllers
             catch (System.Exception ex)
             {
                  // TODO
-                 return StatusCode(500, new {
-                    message = "An internal server error occurred.",
-                    systemError = ex.Message,
-                    details = ex.InnerException?.Message });
+                 return StatusCode(500, new ApiMessageDto {
+                    Message = $"An internal server error occurred. {ex.Message}",
+                 });
             }
         }
-        
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpGet("get-suppliers")]
+        public async Task<ActionResult<List<SupplierListItemDto>>> GetSuppliersAsync()
+        {
+            try
+            {
+                var suppliers = await (
+                    from user in _userManager.Users
+                    join userRole in _context.UserRoles on user.Id equals userRole.UserId
+                    join role in _roleManager.Roles on userRole.RoleId equals role.Id
+                    where role.Name == "Supplier"
+                    select new SupplierListItemDto
+                    {
+                        Id = user.Id,
+                        CompanyName = user.UserName,
+                        CompanyAddress = user.Address,
+                        ContactPerson = user.FirstName,
+                        Email = user.Email ?? string.Empty,
+                        Status = string.IsNullOrWhiteSpace(user.IsActive) ? "Pending" : user.IsActive,
+                        Agreement = user.IsActive == "Active",
+                        CreatedAt = user.CreatedAt
+                    }
+                ).ToListAsync();
+
+                return Ok(suppliers);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiMessageDto {
+                    Message = $"An internal server error occurred. {ex.Message}",
+                });
+            }
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPut("update-supplier/{id}")]
+        public async Task<ActionResult<ApiMessageDto>> UpdateSupplierAsync([FromRoute] string id, [FromBody] SupplierDto supplierDto)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUser = await _userManager.FindByIdAsync(currentUserId ?? "");
+                var branchName = currentUser?.Branch ?? "N/A";
+
+                var supplierUser = await _userManager.FindByIdAsync(id);
+                if (supplierUser == null) return NotFound(new ApiMessageDto { Message = "Supplier not found." });
+                var previousSupplierName = supplierUser.UserName ?? "Unknown Supplier";
+
+                supplierUser.UserName = supplierDto.CompanyName;
+                supplierUser.Email = supplierDto.Email;
+                supplierUser.FirstName = supplierDto.ContactPerson;
+                supplierUser.LastName = "Supplier";
+                supplierUser.Address = supplierDto.CompanyAddress;
+                supplierUser.IsActive = supplierDto.Agreement ? "Active" : "Pending";
+                supplierUser.UpdatedAt = DateTime.UtcNow;
+                supplierUser.EmailConfirmed = true;
+
+                var result = await _userManager.UpdateAsync(supplierUser);
+                if (!result.Succeeded) return BadRequest(result.Errors);
+
+                var currentUserName = User.Identity?.Name ?? "Admin";
+                var auditLog = new AuditLog
+                {
+                    UserId = currentUserId ?? "N/A",
+                    Action = "Update",
+                    PerformedBy = currentUserName,
+                    Branch = branchName,
+                    Description = $"{currentUserName} updated supplier: {previousSupplierName} to {supplierDto.CompanyName}",
+                    DatePerformed = DateTime.UtcNow
+                };
+
+                _context.AuditLogs.Add(auditLog);
+                await _context.SaveChangesAsync();
+
+                var updatedSupplierEvent = new SupplierHubEventDto
+                {
+                    UserId = supplierUser.Id,
+                    CompanyName = supplierUser.UserName ?? supplierDto.CompanyName,
+                    Email = supplierUser.Email ?? string.Empty,
+                    Status = supplierUser.IsActive ?? "Pending",
+                    Message = "Supplier profile updated."
+                };
+                await _hubContext.Clients.All.SendAsync("SupplierUpdated", updatedSupplierEvent);
+
+                return Ok(new ApiMessageDto { Message = "Supplier updated successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiMessageDto {
+                    Message = $"An internal server error occurred. {ex.Message}",
+                });
+            }
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPut("archive-supplier/{id}")]
+        public async Task<ActionResult<ApiMessageDto>> ArchiveSupplierAsync([FromRoute] string id)
+        {
+            try
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUser = await _userManager.FindByIdAsync(currentUserId ?? "");
+                var branchName = currentUser?.Branch ?? "N/A";
+
+                var supplierUser = await _userManager.FindByIdAsync(id);
+                if (supplierUser == null) return NotFound(new ApiMessageDto { Message = "Supplier not found." });
+                var supplierName = supplierUser.UserName ?? "Unknown Supplier";
+
+                supplierUser.IsActive = "Archived";
+                supplierUser.UpdatedAt = DateTime.UtcNow;
+
+                var result = await _userManager.UpdateAsync(supplierUser);
+                if (!result.Succeeded) return BadRequest(result.Errors);
+
+                var currentUserName = User.Identity?.Name ?? "Admin";
+                var auditLog = new AuditLog
+                {
+                    UserId = currentUserId ?? "N/A",
+                    Action = "Archive",
+                    PerformedBy = currentUserName,
+                    Branch = branchName,
+                    Description = $"{currentUserName} archived supplier: {supplierName}",
+                    DatePerformed = DateTime.UtcNow
+                };
+
+                _context.AuditLogs.Add(auditLog);
+                await _context.SaveChangesAsync();
+
+                var archivedSupplierEvent = new SupplierHubEventDto
+                {
+                    UserId = supplierUser.Id,
+                    CompanyName = supplierName,
+                    Email = supplierUser.Email ?? string.Empty,
+                    Status = "Archived",
+                    Message = "Supplier archived."
+                };
+                await _hubContext.Clients.All.SendAsync("SupplierArchived", archivedSupplierEvent);
+
+                return Ok(new ApiMessageDto { Message = "Supplier archived successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiMessageDto {
+                    Message = $"An internal server error occurred. {ex.Message}",
+                });
+            }
+        }
+
     }
 }

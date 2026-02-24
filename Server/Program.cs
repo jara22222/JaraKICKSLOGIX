@@ -17,10 +17,29 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("MyAllowSpecificOrigins",
     policy=>{
-        policy.WithOrigins(
+        var allowedOrigins = new[]
+        {
             "http://localhost:5173",
-            "https://jara-kickslogix.vercel.app"
-        ).AllowAnyHeader().AllowAnyMethod();
+            "https://jara-kickslogix.vercel.app",
+            "http://192.168.56.1:5173",
+            "http://192.168.254.131:5173"
+        };
+
+        policy
+            .SetIsOriginAllowed((origin) =>
+            {
+                var normalized = origin.TrimEnd('/');
+                return allowedOrigins.Any((allowed) =>
+                    string.Equals(
+                        allowed.TrimEnd('/'),
+                        normalized,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 // Add services to the container.

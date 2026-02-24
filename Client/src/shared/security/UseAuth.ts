@@ -1,12 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 //Done resolving
 export const UseAuth = () => {
   const navigate = useNavigate();
 
-  // Get current user data safely
   const getUser = useCallback(() => {
     const userJson = localStorage.getItem("user");
     try {
@@ -15,11 +14,24 @@ export const UseAuth = () => {
       return null;
     }
   }, []);
+  const [user, setUser] = useState(getUser);
+
+  useEffect(() => {
+    const syncUser = () => setUser(getUser());
+    window.addEventListener("storage", syncUser);
+    window.addEventListener("auth-user-updated", syncUser);
+
+    return () => {
+      window.removeEventListener("storage", syncUser);
+      window.removeEventListener("auth-user-updated", syncUser);
+    };
+  }, [getUser]);
 
   const logout = useCallback(() => {
     // 1. Clear all auth data
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setUser(null);
     toast.success("You have been logged out.");
 
     // 2. Redirect to login
@@ -31,9 +43,9 @@ export const UseAuth = () => {
   }, [navigate]);
 
   return {
-    user: getUser(),
+    user,
     isAuthenticated: !!localStorage.getItem("token"),
     logout,
-    isAdmin: getUser()?.roles?.includes("SuperAdmin"),
+    isAdmin: user?.roles?.includes("SuperAdmin"),
   };
 };

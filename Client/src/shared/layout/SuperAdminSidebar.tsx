@@ -1,9 +1,9 @@
 import {
-  Building2,
   ChevronRight,
   Eye,
   Footprints,
   LogOut,
+  Archive,
   ScrollText,
   Settings,
   Truck,
@@ -100,6 +100,11 @@ export default function SuperAdminSidebar() {
           link="managers"
         />
         <NavItem
+          icon={<Archive className="size-5" />}
+          label="Archived Users"
+          link="archived"
+        />
+        <NavItem
           icon={<Truck className="size-5" />}
           label="Supplier Registry"
           link="suppliers"
@@ -110,17 +115,6 @@ export default function SuperAdminSidebar() {
           link="auditlogs"
         />
 
-        <div className="my-4 border-t border-white/10"></div>
-
-        <p className="px-2 text-[10px] hidden lg:block font-bold text-slate-400 uppercase tracking-widest mb-2">
-          Quick Access
-        </p>
-
-        <NavItem
-          icon={<Building2 className="size-5" />}
-          label="Admin Panel"
-          link="/accesscontroll"
-        />
       </nav>
       <div className="relative p-4 border-t border-white/10" ref={menuRef}>
         {/* --- Dropdown Menu --- */}
@@ -166,7 +160,7 @@ export default function SuperAdminSidebar() {
             {user?.firstName?.charAt(0) || "J"}
           </div>
 
-          <div className="flex flex-col text-sm font-medium hidden lg:block">
+          <div className="hidden lg:flex flex-col text-sm font-medium">
             <span className="text-xs font-bold text-white group-hover:text-[#FFD700] transition-colors">
               {user?.firstName} {user?.lastName}
             </span>

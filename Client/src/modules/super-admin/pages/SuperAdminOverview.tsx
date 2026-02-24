@@ -1,5 +1,9 @@
 import SuperAdminHeader from "@/modules/super-admin/components/SuperAdminHeader";
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import { getAuditLogs } from "@/modules/super-admin/services/getauditlogs";
+import { getManagers } from "@/modules/super-admin/services/getmanagers";
+import { getSuppliers } from "@/modules/super-admin/services/supplier";
+import { useQuery } from "@tanstack/react-query";
 import {
   Building2,
   ScrollText,
@@ -9,10 +13,50 @@ import {
   ArrowUpRight,
   Activity,
 } from "lucide-react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 export default function SuperAdminOverview() {
-  const { branches, managers, suppliers, auditLogs } = useSuperAdminStore();
+  const { branches } = useSuperAdminStore();
+
+  const { data: managerData = [], isLoading: managersLoading } = useQuery({
+    queryKey: ["superadmin-managers"],
+    queryFn: getManagers,
+  });
+
+  const { data: supplierData = [], isLoading: suppliersLoading } = useQuery({
+    queryKey: ["superadmin-suppliers"],
+    queryFn: getSuppliers,
+  });
+
+  const { data: auditLogs = [], isLoading: logsLoading } = useQuery({
+    queryKey: ["superadmin-audit-logs"],
+    queryFn: getAuditLogs,
+  });
+
+  const managers = useMemo(
+    () =>
+      managerData.map((manager) => ({
+        firstName: manager.firstName ?? "",
+        lastName: manager.lastName ?? "",
+        branch: manager.branch ?? "N/A",
+        status:
+          manager.isActive?.toLowerCase() === "active" ? "Active" : "Archived",
+      })),
+    [managerData],
+  );
+
+  const suppliers = useMemo(
+    () =>
+      supplierData.map((supplier) => ({
+        companyName: supplier.companyName ?? "",
+        status: supplier.status ?? "Pending",
+        agreement: supplier.agreement ?? false,
+      })),
+    [supplierData],
+  );
+
+  const isLoading = managersLoading || suppliersLoading || logsLoading;
 
   const stats = [
     {
@@ -50,6 +94,10 @@ export default function SuperAdminOverview() {
   ];
 
   const actionColors: Record<string, string> = {
+    CREATE: "bg-blue-50 text-blue-700 border-blue-200",
+    UPDATE: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    ARCHIVE: "bg-amber-50 text-amber-700 border-amber-200",
+    RESTORE: "bg-emerald-50 text-emerald-700 border-emerald-200",
     CREATE_MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
     CREATE_STAFF: "bg-blue-50 text-blue-700 border-blue-200",
     RECEIVE: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -60,6 +108,24 @@ export default function SuperAdminOverview() {
     APPROVE: "bg-blue-50 text-blue-700 border-blue-200",
     PACK: "bg-amber-50 text-amber-700 border-amber-200",
     REGISTER_SUPPLIER: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  };
+
+  const normalizeAction = (action: string) =>
+    action
+      .replace(/([a-z])([A-Z])/g, "$1_$2")
+      .replace(/\s+/g, "_")
+      .toUpperCase();
+
+  const formatDateTime = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
@@ -83,9 +149,7 @@ export default function SuperAdminOverview() {
                   {branches.length} branches
                 </span>
                 ,{" "}
-                <span className="text-[#FFD700] font-bold">
-                  {managers.length} managers
-                </span>
+                <span className="text-[#FFD700] font-bold">{managers.length} managers</span>
                 ,{" "}
                 <span className="text-[#FFD700] font-bold">
                   {suppliers.length} suppliers
@@ -94,6 +158,12 @@ export default function SuperAdminOverview() {
             </div>
           </div>
         </div>
+
+        {isLoading && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4 text-sm text-slate-500 mb-6">
+            Loading dashboard metrics...
+          </div>
+        )}
 
         {/* KPI Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -192,9 +262,9 @@ export default function SuperAdminOverview() {
                         {log.id}
                       </span>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${actionColors[log.action] || "bg-slate-50 text-slate-600 border-slate-200"}`}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${actionColors[normalizeAction(log.action)] || "bg-slate-50 text-slate-600 border-slate-200"}`}
                       >
-                        {log.action.replace("_", " ")}
+                        {log.action.replace(/_/g, " ")}
                       </span>
                     </div>
                     <span className="text-[10px] text-slate-400 font-medium">
@@ -208,10 +278,15 @@ export default function SuperAdminOverview() {
                     — {log.description}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-1">
-                    {log.datePerformed}
+                    {formatDateTime(log.datePerformed)}
                   </p>
                 </div>
               ))}
+              {auditLogs.length === 0 && !isLoading && (
+                <div className="p-4 text-xs text-slate-400">
+                  No recent activity found.
+                </div>
+              )}
             </div>
           </div>
         </div>

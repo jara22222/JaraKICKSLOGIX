@@ -1,4 +1,3 @@
-import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
 import HeaderCell from "@/shared/components/HeaderCell";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import Pagination from "@/shared/components/Pagination";
@@ -6,6 +5,10 @@ import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
 import { useState } from "react";
 
 const ACTION_STYLES: Record<string, string> = {
+  CREATE: "bg-blue-50 text-blue-700 border-blue-200",
+  UPDATE: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  ARCHIVE: "bg-amber-50 text-amber-700 border-amber-200",
+  RESTORE: "bg-emerald-50 text-emerald-700 border-emerald-200",
   CREATE_MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
   CREATE_STAFF: "bg-blue-50 text-blue-700 border-blue-200",
   RECEIVE: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -18,26 +21,36 @@ const ACTION_STYLES: Record<string, string> = {
   REGISTER_SUPPLIER: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
+const normalizeAction = (action: string) =>
+  action
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .replace(/\s+/g, "_")
+    .toUpperCase();
+
+const getActionLabel = (action: string) =>
+  action
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 export default function AuditLogTable({
-  branchFilter,
-  actionFilter,
+  logs,
 }: {
-  branchFilter: string;
-  actionFilter: string;
+  logs: {
+    id: string;
+    userId: string;
+    userName: string;
+    action: string;
+    description: string;
+    branch: string;
+    datePerformed: string;
+  }[];
 }) {
-  const auditLogs = useSuperAdminStore((s) => s.auditLogs);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const filtered = auditLogs.filter((log) => {
-    const branchMatch =
-      branchFilter === "All" || log.branch === branchFilter;
-    const actionMatch =
-      actionFilter === "All" || log.action === actionFilter;
-    return branchMatch && actionMatch;
-  });
-
-  const paginatedData = filtered.slice(
+  const paginatedData = logs.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
@@ -48,7 +61,7 @@ export default function AuditLogTable({
   };
 
   const exportHeaders = [
-    "Log ID",
+    "Count",
     "User",
     "User ID",
     "Action",
@@ -56,8 +69,8 @@ export default function AuditLogTable({
     "Branch",
     "Timestamp",
   ];
-  const exportRows = filtered.map((log) => [
-    log.id,
+  const exportRows = logs.map((log, index) => [
+    String(index + 1),
     log.userName,
     log.userId,
     log.action.replace(/_/g, " "),
@@ -78,7 +91,7 @@ export default function AuditLogTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/80 border-b border-slate-100">
-              <HeaderCell label="Log ID" />
+              <HeaderCell label="#" />
               <HeaderCell label="User" />
               <HeaderCell label="Action" />
               <HeaderCell label="Description" />
@@ -87,14 +100,14 @@ export default function AuditLogTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {paginatedData.map((log) => (
+            {paginatedData.map((log, index) => (
               <tr
                 key={log.id}
                 className="even:bg-slate-50/50 hover:bg-blue-50/30 hover:border-l-2 hover:border-l-[#001F3F] border-l-2 border-l-transparent"
               >
                 <td className="p-3">
-                  <span className="font-mono text-xs font-bold text-[#001F3F] bg-slate-100 px-2 py-1 rounded border border-slate-200">
-                    {log.id}
+                  <span className="text-xs font-bold text-[#001F3F]">
+                    {(currentPage - 1) * pageSize + index + 1}
                   </span>
                 </td>
                 <td className="p-3">
@@ -114,9 +127,9 @@ export default function AuditLogTable({
                 </td>
                 <td className="p-3">
                   <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${ACTION_STYLES[log.action] || "bg-slate-50 text-slate-600 border-slate-200"}`}
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${ACTION_STYLES[normalizeAction(log.action)] || "bg-slate-50 text-slate-600 border-slate-200"}`}
                   >
-                    {log.action.replace(/_/g, " ")}
+                    {getActionLabel(log.action)}
                   </span>
                 </td>
                 <td className="p-3 max-w-[300px]">
@@ -125,13 +138,25 @@ export default function AuditLogTable({
                   </p>
                 </td>
                 <td className="p-3">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-slate-50 text-slate-600 border-slate-200">
-                    {log.branch}
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                      log.branch === "Super Admin"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-slate-50 text-slate-600 border-slate-200"
+                    }`}
+                  >
+                    {log.branch || "Super Admin"}
                   </span>
                 </td>
                 <td className="p-3">
                   <span className="text-xs text-slate-500 whitespace-nowrap">
-                    {log.datePerformed}
+                    {new Date(log.datePerformed).toLocaleString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                 </td>
               </tr>
@@ -152,7 +177,7 @@ export default function AuditLogTable({
         <ExportToolbar onExportCSV={handleExportCSV} onExportPDF={handleExportPDF} />
         <Pagination
           currentPage={currentPage}
-          totalItems={filtered.length}
+          totalItems={logs.length}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
           onPageSizeChange={handlePageSizeChange}

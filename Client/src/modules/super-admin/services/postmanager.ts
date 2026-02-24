@@ -1,17 +1,7 @@
 import apiClient from "@/services/apiClient";
-//added new client
-export interface User {
-  id: string;
-  userName: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  roles: string[];
-}
 
 export interface PostmanagerResponse {
-  token: string;
-  user: User;
+  message: string;
 }
 
 export interface ManagerCredentials {
@@ -26,7 +16,7 @@ export interface ManagerCredentials {
 export const createManagerAccount = async (
   credentials: ManagerCredentials,
 ): Promise<PostmanagerResponse> => {
-  // Pass the LoginResponse type to axios.post so 'data' is typed correctly
+  // API returns a success message for manager creation
   const { data } = await apiClient.post<PostmanagerResponse>(
     "/api/ManagerAccount/register-manager",
     credentials,

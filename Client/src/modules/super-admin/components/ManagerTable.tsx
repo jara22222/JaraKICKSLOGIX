@@ -1,4 +1,5 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import type { Manager } from "@/modules/super-admin/store/UseSuperAdminStore";
 import HeaderCell from "@/shared/components/HeaderCell";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import Pagination from "@/shared/components/Pagination";
@@ -6,15 +7,24 @@ import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
 import { Pencil, Archive } from "lucide-react";
 import { useState } from "react";
 
-export default function ManagerTable() {
-  const { managers, openEditManager, setArchiveConfirmManager } =
-    useSuperAdminStore();
+export default function ManagerTable({ managers }: { managers: Manager[] }) {
+  const { openEditManager, setArchiveConfirmManager } = useSuperAdminStore();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const getManagerDisplayName = (mgr: (typeof managers)[number]) => {
+    const middleInitial = mgr.middleName?.trim()
+      ? ` ${mgr.middleName.trim().charAt(0)}.`
+      : "";
+    return `${mgr.firstName}${middleInitial} ${mgr.lastName}`.trim();
+  };
+
+  const getRegisteredDateDisplay = (createdAt?: string) =>
+    createdAt?.trim() ? createdAt : "N/A";
+
   const paginatedData = managers.slice(
     (currentPage - 1) * pageSize,
-    currentPage * pageSize
+    currentPage * pageSize,
   );
 
   const handlePageSizeChange = (size: number) => {
@@ -32,11 +42,11 @@ export default function ManagerTable() {
   ];
   const exportRows = managers.map((mgr) => [
     `MGR-${String(mgr.id).padStart(3, "0")}`,
-    `${mgr.firstName} ${mgr.middleName.charAt(0)}. ${mgr.lastName}`,
-    mgr.branch,
+    getManagerDisplayName(mgr),
+    mgr.branch?.trim() ? mgr.branch : "N/A",
     mgr.email,
     mgr.status,
-    mgr.createdAt,
+    getRegisteredDateDisplay(mgr.createdAt),
   ]);
 
   const handleExportCSV = () =>
@@ -47,7 +57,7 @@ export default function ManagerTable() {
       "Branch_Managers",
       "Branch Managers Report",
       exportHeaders,
-      exportRows
+      exportRows,
     );
 
   const statusStyles = (status: string) => {
@@ -89,8 +99,7 @@ export default function ManagerTable() {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-[#001F3F]">
-                        {mgr.firstName} {mgr.middleName.charAt(0)}.{" "}
-                        {mgr.lastName}
+                        {getManagerDisplayName(mgr)}
                       </p>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                         MGR-{String(mgr.id).padStart(3, "0")}
@@ -100,7 +109,7 @@ export default function ManagerTable() {
                 </td>
                 <td className="p-3">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border bg-blue-50 text-blue-700 border-blue-200">
-                    {mgr.branch}
+                    {mgr.branch?.trim() ? mgr.branch : "N/A"}
                   </span>
                 </td>
                 <td className="p-3">
@@ -108,7 +117,7 @@ export default function ManagerTable() {
                 </td>
                 <td className="p-3">
                   <span className="text-xs text-slate-500">
-                    {mgr.createdAt}
+                    {getRegisteredDateDisplay(mgr.createdAt)}
                   </span>
                 </td>
                 <td className="p-3">

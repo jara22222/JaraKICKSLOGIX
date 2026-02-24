@@ -53,7 +53,9 @@ namespace Server.Controllers
                     user.LastName,
                     user.Email,
                     user.Address,
+                    user.Branch,
                     user.IsActive,
+                    user.CreatedAt,
                     role.Name                                
                 }
             ).ToListAsync();

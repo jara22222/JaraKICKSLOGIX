@@ -3,12 +3,73 @@ import ManagerTable from "@/modules/super-admin/components/ManagerTable";
 import ManagerFormModal from "@/modules/super-admin/components/ManagerFormModal";
 import ArchiveManagerModal from "@/modules/super-admin/components/ArchiveManagerModal";
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import { getManagers } from "@/modules/super-admin/services/getmanagers";
+import { useManagerRealtime } from "@/modules/super-admin/hooks/useManagerRealtime";
+import { useQuery } from "@tanstack/react-query";
 import { Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function BranchManagers() {
-  const { managers, branches, toggleManagerModal } = useSuperAdminStore();
+  useManagerRealtime();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { managers, branches, toggleManagerModal, setManagers } =
+    useSuperAdminStore();
+
+  const { data: managerData, isLoading } = useQuery({
+    queryKey: ["superadmin-managers"],
+    queryFn: getManagers,
+  });
+
+  useEffect(() => {
+    if (!managerData) return;
+
+    const formatCreatedAt = (value?: string) => {
+      if (!value) return "N/A";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "N/A";
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+      });
+    };
+
+    const mappedManagers = managerData.map((manager, index) => ({
+      userId: manager.id,
+      id: index + 1,
+      firstName: manager.firstName ?? "",
+      middleName: manager.middleName ?? "",
+      lastName: manager.lastName ?? "",
+      email: manager.email ?? "",
+      address: manager.address ?? "",
+      branch: manager.branch ?? "N/A",
+      status:
+        manager.isActive?.toLowerCase() === "inactive"
+          ? "Archived"
+          : "Active",
+      createdAt: formatCreatedAt(manager.createdAt),
+    }));
+
+    setManagers(mappedManagers);
+  }, [managerData, setManagers]);
+
   const activeCount = managers.filter((m) => m.status === "Active").length;
   const archivedCount = managers.filter((m) => m.status === "Archived").length;
+  const filteredManagers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return managers;
+
+    return managers.filter((manager) => {
+      const fullName =
+        `${manager.firstName} ${manager.middleName} ${manager.lastName}`.toLowerCase();
+      return (
+        fullName.includes(query) ||
+        manager.branch.toLowerCase().includes(query) ||
+        manager.email.toLowerCase().includes(query)
+      );
+    });
+  }, [managers, searchQuery]);
 
   return (
     <>
@@ -78,6 +139,8 @@ export default function BranchManagers() {
             <input
               type="text"
               placeholder="Search managers by name or branch..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all shadow-sm"
             />
           </div>
@@ -90,7 +153,13 @@ export default function BranchManagers() {
           </button>
         </div>
 
-        <ManagerTable />
+        {isLoading ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-sm text-slate-500">
+            Loading managers...
+          </div>
+        ) : (
+          <ManagerTable managers={filteredManagers} />
+        )}
         <ManagerFormModal />
         <ArchiveManagerModal />
       </div>

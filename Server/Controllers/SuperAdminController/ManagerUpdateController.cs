@@ -16,12 +16,12 @@ namespace Server.Controllers
     {
         private readonly UserManager<Users> _userManager;
         private readonly ApplicationDbContext _context;
-        private readonly IHubContext<ArchiveUserHub> _hubContext;    
+        private readonly IHubContext<UpdateManagerHub> _hubContext;    
    
 
         public ManagerUpdateContoller(
             UserManager<Users> user,
-            IHubContext<ArchiveUserHub> hubContext,
+            IHubContext<UpdateManagerHub> hubContext,
             ApplicationDbContext context)
         {
             _userManager = user;
@@ -66,7 +66,16 @@ namespace Server.Controllers
 
                 if(result.Succeeded)
                 {
-                  
+                    var managerHubEvent = new ManagerHubEventDto
+                    {
+                        UserId = user.Id,
+                        UserName = user.UserName ?? ManagerUser,
+                        Email = user.Email ?? string.Empty,
+                        Branch = user.Branch ?? "N/A",
+                        Status = user.IsActive ?? "N/A",
+                        Message = "Branch manager updated."
+                    };
+                    await _hubContext.Clients.All.SendAsync("ManagerUpdated", managerHubEvent);
                     
                     var currentUserName = User.Identity?.Name ?? "Admin";
 
