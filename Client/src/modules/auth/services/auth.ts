@@ -1,4 +1,4 @@
-import apiClient from "@/api/apiClient";
+import apiClient from "@/services/apiClient";
 //added new client
 export interface User {
   id: string;
@@ -24,7 +24,7 @@ export const loginUser = async (
 ): Promise<LoginResponse> => {
   // Pass the LoginResponse type to axios.post so 'data' is typed correctly
   const { data } = await apiClient.post<LoginResponse>(
-    "/Auth/login",
+    "api/Auth/login",
     credentials,
   );
   return data;

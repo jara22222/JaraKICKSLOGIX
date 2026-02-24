@@ -14,8 +14,10 @@ namespace Server.DTO
         [StringLength(50)]
         public string LastName { get; set; } = string.Empty;
         [StringLength(50)]
+        [Required]
         public string Address { get; set; } = string.Empty;
         [StringLength(50)]
+        [Required]
         public string Branch { get; set; } = string.Empty;
         [EmailAddress]
         [Required]

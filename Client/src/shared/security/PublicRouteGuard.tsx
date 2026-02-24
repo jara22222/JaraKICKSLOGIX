@@ -8,14 +8,22 @@ const PublicRouteGuard = () => {
   if (token && user) {
     // If they are logged in, don't show the login page
     // Redirect based on role or to a default home
-    return user.roles.includes("SuperAdmin") ? (
-      <Navigate to="/superadmin" replace />
-    ) : (
-      <Navigate to="/dashboard" replace />
-    );
+    if (user.roles.includes("SuperAdmin")) {
+      return <Navigate to="/superadmin" replace />;
+    }
+    if (user.roles.includes("BranchManager")) {
+      return <Navigate to="/superadmin" replace />;
+    }
+    if (user.roles.includes("InboundCoordinator")) {
+      return <Navigate to="/superadmin" replace />;
+    }
+    if (user.roles.includes("OutboundCoordinator")) {
+      return <Navigate to="/superadmin" replace />;
+    }
+    if (user.roles.includes("VASPersonnel")) {
+      return <Navigate to="/superadmin" replace />;
+    }
   }
-
-  // If not logged in, allow them to see the login page
   return <Outlet />;
 };
 
