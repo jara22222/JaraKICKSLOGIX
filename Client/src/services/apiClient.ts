@@ -1,8 +1,9 @@
 import axios from "axios";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/shared/config/api";
 
 const apiClient = axios.create({
-  baseURL: "http://localhost:5017/",
+  baseURL: `${API_BASE_URL}/`,
   headers: {
     "Content-Type": "application/json",
   },

@@ -9,17 +9,20 @@ export type Branch = {
 };
 
 export type Manager = {
+  userId: string;
   id: number;
   firstName: string;
   middleName: string;
   lastName: string;
   email: string;
+  address: string;
   branch: string;
   status: string;
   createdAt: string;
 };
 
 export type Supplier = {
+  userId: string;
   id: number;
   companyName: string;
   companyAddress: string;
@@ -52,6 +55,7 @@ type SuperAdminState = {
   closeManagerModal: () => void;
 
   // Manager CRUD
+  setManagers: (managers: Manager[]) => void;
   updateManager: (id: number, data: Partial<Manager>) => void;
   archiveManager: (id: number) => void;
 
@@ -67,6 +71,7 @@ type SuperAdminState = {
   closeSupplierModal: () => void;
 
   // Supplier CRUD
+  setSuppliers: (suppliers: Supplier[]) => void;
   updateSupplier: (id: number, data: Partial<Supplier>) => void;
   archiveSupplier: (id: number) => void;
 
@@ -95,6 +100,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
     set({ isManagerModalOpen: false, editingManager: null }),
 
   // Manager CRUD
+  setManagers: (managers) => set({ managers }),
   updateManager: (id, data) =>
     set((state) => {
       const existingManager = state.managers.find((m) => m.id === id);
@@ -146,6 +152,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
     set({ isSupplierModalOpen: false, editingSupplier: null }),
 
   // Supplier CRUD
+  setSuppliers: (suppliers) => set({ suppliers }),
   updateSupplier: (id, data) =>
     set((state) => {
       const existingSupplier = state.suppliers.find((s) => s.id === id);
@@ -181,31 +188,37 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
 
   managers: [
     {
+      userId: "seed-1",
       id: 1,
       firstName: "Michael",
       middleName: "Jeffrey",
       lastName: "Jordan",
       email: "mj@kickslogix.com",
+      address: "N/A",
       branch: "Davao Main Hub",
       status: "Active",
       createdAt: "Jan 15, 2026",
     },
     {
+      userId: "seed-2",
       id: 2,
       firstName: "Tim",
       middleName: "Theodore",
       lastName: "Duncan",
       email: "td@kickslogix.com",
+      address: "N/A",
       branch: "Tagum Branch",
       status: "Active",
       createdAt: "Jan 20, 2026",
     },
     {
+      userId: "seed-3",
       id: 3,
       firstName: "Earvin",
       middleName: "Magic",
       lastName: "Johnson",
       email: "magic@kickslogix.com",
+      address: "N/A",
       branch: "GenSan Warehouse",
       status: "Inactive",
       createdAt: "Feb 01, 2026",
@@ -214,6 +227,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
 
   suppliers: [
     {
+      userId: "seed-s1",
       id: 1,
       companyName: "Nike Global",
       companyAddress: "Nike HQ, Beaverton, Oregon",
@@ -224,6 +238,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       createdAt: "Jan 10, 2026",
     },
     {
+      userId: "seed-s2",
       id: 2,
       companyName: "Adidas Originals",
       companyAddress: "Herzogenaurach, Germany",
@@ -234,6 +249,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       createdAt: "Jan 12, 2026",
     },
     {
+      userId: "seed-s3",
       id: 3,
       companyName: "Puma Logistics",
       companyAddress: "Puma Way, Somerville, MA",
@@ -244,6 +260,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
       createdAt: "Feb 05, 2026",
     },
     {
+      userId: "seed-s4",
       id: 4,
       companyName: "New Balance Inc.",
       companyAddress: "Boston, Massachusetts",

@@ -16,18 +16,21 @@ namespace Server.Controllers
     {
         private readonly UserManager<Users> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly IHubContext<SupplierHub> _hubContext;    
+        private readonly IHubContext<ManagerHub> _managerHubContext;
+        private readonly IHubContext<SupplierHub> _legacySupplierHubContext;
         private readonly ApplicationDbContext _context;
 
         public ManagerAccountController(
             UserManager<Users> user,
             RoleManager<IdentityRole> role,
-            IHubContext<SupplierHub> hubContext,
+            IHubContext<ManagerHub> managerHubContext,
+            IHubContext<SupplierHub> legacySupplierHubContext,
             ApplicationDbContext context)
         {
             _userManager = user;
             _roleManager = role;
-            _hubContext = hubContext;
+            _managerHubContext = managerHubContext;
+            _legacySupplierHubContext = legacySupplierHubContext;
             _context = context;
         }
     
@@ -70,13 +73,19 @@ namespace Server.Controllers
 
                     await _userManager.AddToRoleAsync(newManagerUser,roleName);
 
-                    await _hubContext.Clients.All.SendAsync("ReceiveNewBranchManager", new
+                    var managerHubEvent = new ManagerHubEventDto
                     {
-                        UserName =ManagerUser,
-                        Email = managerDto.Email,
-                        IsActive = "Active",
-                        Message =  "A new branch manager has joined!"
-                    });
+                        UserId = newManagerUser.Id,
+                        UserName = ManagerUser,
+                        Email = managerDto.Email ?? string.Empty,
+                        Branch = managerDto.Branch ?? "N/A",
+                        Status = "Active",
+                        Message = "A new branch manager has joined!"
+                    };
+                    await _managerHubContext.Clients.All.SendAsync("ManagerCreated", managerHubEvent);
+
+                    // Keep legacy event for existing client listeners.
+                    await _legacySupplierHubContext.Clients.All.SendAsync("ReceiveNewBranchManager", managerHubEvent);
 
                      
                     var currentUserName = User.Identity?.Name ?? "Admin";

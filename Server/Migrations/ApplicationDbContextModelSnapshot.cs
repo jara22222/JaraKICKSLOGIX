@@ -191,6 +191,54 @@ namespace Server.Migrations
                     b.ToTable("AuditLogs");
                 });
 
+            modelBuilder.Entity("Server.Models.BinLocation", b =>
+                {
+                    b.Property<string>("BinId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("BinId");
+
+                    b.Property<int>("BinCapacity")
+                        .HasColumnType("int")
+                        .HasColumnName("BinCapacity");
+
+                    b.Property<string>("BinLocationCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("BinLocation");
+
+                    b.Property<string>("BinSize")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)")
+                        .HasColumnName("BinSize");
+
+                    b.Property<string>("BinStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasColumnName("BinStatus");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreatedAt");
+
+                    b.Property<string>("QrCodeString")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("QrCodeString");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UpdatedAt");
+
+                    b.HasKey("BinId");
+
+                    b.ToTable("BinLocation");
+                });
+
             modelBuilder.Entity("Server.Models.Products", b =>
                 {
                     b.Property<string>("ProductId")

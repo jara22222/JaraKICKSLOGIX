@@ -1,17 +1,18 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { createManagerAccount } from "../services/postmanager";
+import { updateManagerAccount } from "../services/updatemanager";
 
 export default function ManagerFormModal() {
+  const queryClient = useQueryClient();
   const {
     isManagerModalOpen,
     closeManagerModal,
     editingManager,
     branches,
-    updateManager,
   } = useSuperAdminStore();
 
   //State
@@ -21,7 +22,6 @@ export default function ManagerFormModal() {
   const [address, setAddress] = useState("");
   const [email, setEmail] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
-  const [status, setStatus] = useState("Active");
 
   const isEditMode = !!editingManager;
 
@@ -29,12 +29,31 @@ export default function ManagerFormModal() {
   const registerMutation = useMutation({
     mutationFn: createManagerAccount,
     onSuccess: (data) => {
-      // 1. Store token
-      localStorage.setItem("token", data.token);
-      // 2. Store user info (optional, or use a state manager)
-      localStorage.setItem("user", JSON.stringify(data.user));
+      toast.success(data.message || "Manager account created successfully.");
+      queryClient.invalidateQueries({ queryKey: ["superadmin-managers"] });
+      handleClose();
+    },
+  });
 
-      toast.success(`Manager account created for ${data.user.firstName}.`);
+  const updateMutation = useMutation({
+    mutationFn: ({
+      managerId,
+      payload,
+    }: {
+      managerId: string;
+      payload: {
+        firstName: string;
+        middleName: string | null;
+        lastName: string;
+        email: string;
+        address: string;
+        branch: string;
+        isActive: string;
+      };
+    }) => updateManagerAccount(managerId, payload),
+    onSuccess: (data) => {
+      toast.success(data.message || "Manager account updated successfully.");
+      queryClient.invalidateQueries({ queryKey: ["superadmin-managers"] });
       handleClose();
     },
   });
@@ -46,8 +65,8 @@ export default function ManagerFormModal() {
       setMiddleName(editingManager.middleName);
       setLastName(editingManager.lastName);
       setEmail(editingManager.email);
+      setAddress(editingManager.address ?? "");
       setSelectedBranch(editingManager.branch);
-      setStatus(editingManager.status);
     } else {
       resetForm();
     }
@@ -58,9 +77,9 @@ export default function ManagerFormModal() {
     setMiddleName("");
     setLastName("");
     setEmail("");
+    setAddress("");
 
     setSelectedBranch("");
-    setStatus("Active");
   };
 
   const handleClose = () => {
@@ -70,15 +89,23 @@ export default function ManagerFormModal() {
 
   const handleSubmit = () => {
     if (isEditMode && editingManager) {
-      updateManager(editingManager.id, {
-        firstName,
-        middleName,
-        lastName,
-        email,
-        branch: selectedBranch,
-        status,
+      if (!editingManager.userId || editingManager.userId.startsWith("seed-")) {
+        toast.error("Manager ID is missing. Please refresh the page.");
+        return;
+      }
+
+      updateMutation.mutate({
+        managerId: editingManager.userId,
+        payload: {
+          firstName,
+          middleName: middleName || null,
+          lastName,
+          email,
+          address,
+          branch: selectedBranch,
+          isActive: editingManager.status === "Archived" ? "InActive" : "Active",
+        },
       });
-      handleClose();
     } else {
       // --- NEW: Trigger the Register Mutation ---
       registerMutation.mutate({
@@ -191,44 +218,6 @@ export default function ManagerFormModal() {
               placeholder="e.g. Juan Luna st. Davao City"
             />
           </div>
-          {/* Status — only show in edit mode */}
-          {isEditMode && (
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">
-                Status
-              </label>
-              <div className="flex gap-3">
-                {["Active", "Inactive"].map((s) => (
-                  <label
-                    key={s}
-                    className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer transition-all text-sm font-bold ${
-                      status === s
-                        ? s === "Active"
-                          ? "border-green-400 bg-green-50 text-green-700"
-                          : "border-slate-400 bg-slate-50 text-slate-600"
-                        : "border-slate-200 text-slate-400 hover:bg-slate-50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="status"
-                      value={s}
-                      checked={status === s}
-                      onChange={() => setStatus(s)}
-                      className="sr-only"
-                    />
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        s === "Active" ? "bg-green-500" : "bg-slate-400"
-                      }`}
-                    ></span>
-                    {s}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Branch assignment */}
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">
@@ -272,10 +261,10 @@ export default function ManagerFormModal() {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={registerMutation.isPending}
+            disabled={registerMutation.isPending || updateMutation.isPending}
             className="px-6 py-2 bg-[#001F3F] text-white text-xs font-bold uppercase rounded-lg hover:bg-[#00162e] shadow-md shadow-blue-900/10 transition-all hover:-translate-y-0.5"
           >
-            {registerMutation.isPending
+            {registerMutation.isPending || updateMutation.isPending
               ? "Processing..."
               : isEditMode
                 ? "Save Changes"

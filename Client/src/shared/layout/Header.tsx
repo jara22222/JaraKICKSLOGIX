@@ -7,9 +7,11 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   accessmanagement: "Admin & Access",
   suppliermanagement: "Supply Management",
   binmanagement: "Bin Management",
+  binsarchived: "Bins Archived",
   inboundmanagement: "Inbound",
   outboundmanagement: "Outbound",
   inventorymanagement: "Inventory",
+  profilesettings: "Account Settings",
 };
 
 export default function AcessControllHeader({

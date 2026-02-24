@@ -1,24 +1,55 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import {
+  createSupplier,
+  updateSupplierAccount,
+} from "@/modules/super-admin/services/supplier";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function SupplierFormModal() {
-  const {
-    isSupplierModalOpen,
-    closeSupplierModal,
-    editingSupplier,
-    updateSupplier,
-  } = useSuperAdminStore();
+  const queryClient = useQueryClient();
+  const { isSupplierModalOpen, closeSupplierModal, editingSupplier } =
+    useSuperAdminStore();
 
   const [companyName, setCompanyName] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [email, setEmail] = useState("");
   const [agreement, setAgreement] = useState(false);
-  const [status, setStatus] = useState("Active");
 
   const isEditMode = !!editingSupplier;
+
+  const createMutation = useMutation({
+    mutationFn: createSupplier,
+    onSuccess: (data) => {
+      toast.success(data.message || "Supplier created successfully.");
+      queryClient.invalidateQueries({ queryKey: ["superadmin-suppliers"] });
+      handleClose();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      supplierId,
+      payload,
+    }: {
+      supplierId: string;
+      payload: {
+        companyName: string;
+        companyAddress: string;
+        contactPerson: string;
+        email: string;
+        agreement: boolean;
+      };
+    }) => updateSupplierAccount(supplierId, payload),
+    onSuccess: (data) => {
+      toast.success(data.message || "Supplier updated successfully.");
+      queryClient.invalidateQueries({ queryKey: ["superadmin-suppliers"] });
+      handleClose();
+    },
+  });
 
   useEffect(() => {
     if (editingSupplier) {
@@ -27,7 +58,6 @@ export default function SupplierFormModal() {
       setContactPerson(editingSupplier.contactPerson);
       setEmail(editingSupplier.email);
       setAgreement(editingSupplier.agreement);
-      setStatus(editingSupplier.status);
     } else {
       resetForm();
     }
@@ -39,7 +69,6 @@ export default function SupplierFormModal() {
     setContactPerson("");
     setEmail("");
     setAgreement(false);
-    setStatus("Active");
   };
 
   const handleClose = () => {
@@ -49,19 +78,33 @@ export default function SupplierFormModal() {
 
   const handleSubmit = () => {
     if (isEditMode && editingSupplier) {
-      updateSupplier(editingSupplier.id, {
+      if (!editingSupplier.userId || editingSupplier.userId.startsWith("seed-")) {
+        toast.error("Supplier ID is missing. Please refresh the page.");
+        return;
+      }
+
+      updateMutation.mutate({
+        supplierId: editingSupplier.userId,
+        payload: {
+          companyName,
+          companyAddress,
+          contactPerson,
+          email,
+          agreement,
+        },
+      });
+    } else {
+      createMutation.mutate({
         companyName,
         companyAddress,
         contactPerson,
         email,
         agreement,
-        status,
       });
-    } else {
-      toast.info("Supplier registration is not connected to the API yet.");
     }
-    handleClose();
   };
+
+  const isProcessing = createMutation.isPending || updateMutation.isPending;
 
   if (!isSupplierModalOpen) return null;
 
@@ -73,7 +116,6 @@ export default function SupplierFormModal() {
       ></div>
 
       <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden mx-4">
-        {/* Header */}
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div>
             <h3 className="text-lg font-bold text-[#001F3F]">
@@ -94,7 +136,6 @@ export default function SupplierFormModal() {
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
@@ -149,45 +190,6 @@ export default function SupplierFormModal() {
             </div>
           </div>
 
-          {/* Status — only in edit mode */}
-          {isEditMode && (
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">
-                Status
-              </label>
-              <div className="flex gap-3">
-                {["Active", "Pending"].map((s) => (
-                  <label
-                    key={s}
-                    className={`flex-1 flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer transition-all text-sm font-bold ${
-                      status === s
-                        ? s === "Active"
-                          ? "border-green-400 bg-green-50 text-green-700"
-                          : "border-amber-400 bg-amber-50 text-amber-600"
-                        : "border-slate-200 text-slate-400 hover:bg-slate-50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="supplierStatus"
-                      value={s}
-                      checked={status === s}
-                      onChange={() => setStatus(s)}
-                      className="sr-only"
-                    />
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        s === "Active" ? "bg-green-500" : "bg-amber-500"
-                      }`}
-                    ></span>
-                    {s}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Agreement */}
           <div>
             <label className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 has-[:checked]:border-[#001F3F] has-[:checked]:bg-blue-50/50 transition-all">
               <input
@@ -209,7 +211,6 @@ export default function SupplierFormModal() {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
           <button
             onClick={handleClose}
@@ -219,9 +220,14 @@ export default function SupplierFormModal() {
           </button>
           <button
             onClick={handleSubmit}
-            className="px-6 py-2 bg-[#001F3F] text-white text-xs font-bold uppercase rounded-lg hover:bg-[#00162e] shadow-md shadow-blue-900/10 transition-all hover:-translate-y-0.5"
+            disabled={isProcessing}
+            className="px-6 py-2 bg-[#001F3F] text-white text-xs font-bold uppercase rounded-lg hover:bg-[#00162e] shadow-md shadow-blue-900/10 transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isEditMode ? "Save Changes" : "Register Supplier"}
+            {isProcessing
+              ? "Processing..."
+              : isEditMode
+                ? "Save Changes"
+                : "Register Supplier"}
           </button>
         </div>
       </div>

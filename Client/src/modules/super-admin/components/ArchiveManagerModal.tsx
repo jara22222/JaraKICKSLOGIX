@@ -1,22 +1,48 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, AlertTriangle, X } from "lucide-react";
+import { toast } from "sonner";
+import { archiveManagerAccount } from "../services/archivemanager";
 
 export default function ArchiveManagerModal() {
-  const { archiveConfirmManager, setArchiveConfirmManager, archiveManager } =
+  const queryClient = useQueryClient();
+  const { archiveConfirmManager, setArchiveConfirmManager } =
     useSuperAdminStore();
 
-  if (!archiveConfirmManager) return null;
-
-  const fullName = `${archiveConfirmManager.firstName} ${archiveConfirmManager.middleName.charAt(0)}. ${archiveConfirmManager.lastName}`;
-  const mgrCode = `MGR-${String(archiveConfirmManager.id).padStart(3, "0")}`;
+  const archiveMutation = useMutation({
+    mutationFn: archiveManagerAccount,
+    onSuccess: (data) => {
+      toast.success(data.message || "Manager archived successfully.");
+      queryClient.invalidateQueries({ queryKey: ["superadmin-managers"] });
+      setArchiveConfirmManager(null);
+    },
+  });
 
   const handleConfirm = () => {
-    archiveManager(archiveConfirmManager.id);
+    if (!archiveConfirmManager) return;
+
+    if (
+      !archiveConfirmManager.userId ||
+      archiveConfirmManager.userId.startsWith("seed-")
+    ) {
+      toast.error("Manager ID is missing. Please refresh the page.");
+      return;
+    }
+
+    archiveMutation.mutate(archiveConfirmManager.userId);
   };
 
   const handleCancel = () => {
     setArchiveConfirmManager(null);
   };
+
+  if (!archiveConfirmManager) return null;
+
+  const middleInitial = archiveConfirmManager.middleName?.trim()
+    ? ` ${archiveConfirmManager.middleName.trim().charAt(0)}.`
+    : "";
+  const fullName = `${archiveConfirmManager.firstName}${middleInitial} ${archiveConfirmManager.lastName}`.trim();
+  const mgrCode = `MGR-${String(archiveConfirmManager.id).padStart(3, "0")}`;
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center">
@@ -91,10 +117,11 @@ export default function ArchiveManagerModal() {
           </button>
           <button
             onClick={handleConfirm}
+            disabled={archiveMutation.isPending}
             className="px-6 py-2 bg-amber-500 text-white text-xs font-bold uppercase rounded-lg hover:bg-amber-600 shadow-md shadow-amber-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2"
           >
             <Archive className="size-3.5" />
-            Archive Manager
+            {archiveMutation.isPending ? "Archiving..." : "Archive Manager"}
           </button>
         </div>
       </div>

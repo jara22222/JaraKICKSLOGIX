@@ -1,5 +1,6 @@
 import { useInboundStore } from "@/modules/inbound/store/UseInboundStore";
-import { UseGetBinState } from "@/modules/bin-management/store/UseGetBins";
+import { useQuery } from "@tanstack/react-query";
+import { getBinLocations } from "@/modules/bin-management/services/binLocation";
 import {
   PackageCheck,
   X,
@@ -12,28 +13,29 @@ import { useMemo } from "react";
 
 export default function AcceptShipmentModal() {
   const { acceptTarget, setAcceptTarget, acceptShipment } = useInboundStore();
-  const bins = UseGetBinState((b) => b.NEW_INITIAL_BINS);
+  const { data: bins = [] } = useQuery({
+    queryKey: ["branchmanager-bins"],
+    queryFn: getBinLocations,
+  });
 
   // Auto-find the best available bin
   const suggestedBin = useMemo(() => {
     if (!acceptTarget) return null;
 
-    // Find bins that are Active and have available capacity
+    // Pick available bins with enough capacity
     const available = bins
       .filter(
         (bin) =>
-          bin.status === "Active" && bin.current + acceptTarget.qty <= bin.capacity
+          bin.binStatus === "Available" && acceptTarget.qty <= bin.binCapacity
       )
-      .sort((a, b) => b.capacity - b.current - (a.capacity - a.current)); // Most free space first
+      .sort((a, b) => b.binCapacity - a.binCapacity);
 
     if (available.length > 0) return available[0];
 
     // If no bin has enough capacity for full qty, find any with partial space
     const partialAvailable = bins
-      .filter(
-        (bin) => bin.status === "Active" && bin.current < bin.capacity
-      )
-      .sort((a, b) => b.capacity - b.current - (a.capacity - a.current));
+      .filter((bin) => bin.binStatus === "Available")
+      .sort((a, b) => b.binCapacity - a.binCapacity);
 
     return partialAvailable.length > 0 ? partialAvailable[0] : null;
   }, [acceptTarget, bins]);
@@ -41,11 +43,11 @@ export default function AcceptShipmentModal() {
   if (!acceptTarget) return null;
 
   const isOverflow = suggestedBin
-    ? acceptTarget.qty > suggestedBin.capacity - suggestedBin.current
+    ? acceptTarget.qty > suggestedBin.binCapacity
     : true;
 
   const handleAccept = () => {
-    const binCode = suggestedBin ? suggestedBin.code : "STAGING-01";
+    const binCode = suggestedBin ? suggestedBin.binLocation : "STAGING-01";
     acceptShipment(acceptTarget.id, binCode);
   };
 
@@ -152,22 +154,21 @@ export default function AcceptShipmentModal() {
                     </div>
                     <div>
                       <p className="font-mono text-lg font-black text-[#001F3F]">
-                        {suggestedBin.code}
+                        {suggestedBin.binLocation}
                       </p>
                       <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                        {suggestedBin.zone}
+                        {suggestedBin.binSize}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-500">
-                        {suggestedBin.current}/{suggestedBin.capacity}
+                        0/{suggestedBin.binCapacity}
                       </span>
                       <ArrowRight className="size-3 text-slate-400" />
                       <span className="text-xs font-bold text-[#001F3F]">
-                        {suggestedBin.current + acceptTarget.qty}/
-                        {suggestedBin.capacity}
+                        {acceptTarget.qty}/{suggestedBin.binCapacity}
                       </span>
                     </div>
                     <div className="w-24 h-2 bg-white rounded-full overflow-hidden mt-1">
@@ -176,7 +177,7 @@ export default function AcceptShipmentModal() {
                           isOverflow ? "bg-amber-500" : "bg-emerald-500"
                         }`}
                         style={{
-                          width: `${Math.min(((suggestedBin.current + acceptTarget.qty) / suggestedBin.capacity) * 100, 100)}%`,
+                          width: `${Math.min((acceptTarget.qty / suggestedBin.binCapacity) * 100, 100)}%`,
                         }}
                       ></div>
                     </div>
