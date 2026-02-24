@@ -1,6 +1,7 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function SupplierFormModal() {
   const {
@@ -56,6 +57,8 @@ export default function SupplierFormModal() {
         agreement,
         status,
       });
+    } else {
+      toast.info("Supplier registration is not connected to the API yet.");
     }
     handleClose();
   };

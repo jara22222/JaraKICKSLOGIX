@@ -1,8 +1,8 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
 import { useMutation } from "@tanstack/react-query";
-import { AxiosError } from "axios";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { createManagerAccount } from "../services/postmanager";
 
 export default function ManagerFormModal() {
@@ -34,11 +34,8 @@ export default function ManagerFormModal() {
       // 2. Store user info (optional, or use a state manager)
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      console.log("Manager created Successful:", data.user.userName);
-    },
-    onError: (error: AxiosError<any>) => {
-      // Now TypeScript knows 'error.response' exists
-      console.log(error.response?.data);
+      toast.success(`Manager account created for ${data.user.firstName}.`);
+      handleClose();
     },
   });
 

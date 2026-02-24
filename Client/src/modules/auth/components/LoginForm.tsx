@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser, type LoginCredentials } from "../services/auth";
 import { useMutation } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
+import { toast } from "sonner";
 export default function LoginForm() {
   const navigate = useNavigate();
   const [form, setForm] = useState<LoginCredentials>({
@@ -25,12 +25,8 @@ export default function LoginForm() {
       // 2. Store user info (optional, or use a state manager)
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      console.log("Login Successful:", data.user.userName);
+      toast.success(`Welcome back, ${data.user.firstName}!`);
       navigate("/superadmin"); // Redirect after login
-    },
-    onError: (error: AxiosError<any>) => {
-      // Now TypeScript knows 'error.response' exists
-      console.log(error.response?.data);
     },
   });
 

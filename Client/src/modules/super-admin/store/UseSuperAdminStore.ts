@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { toast } from "sonner";
 
 // --- TYPES ---
 export type Branch = {
@@ -95,18 +96,36 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
 
   // Manager CRUD
   updateManager: (id, data) =>
-    set((state) => ({
-      managers: state.managers.map((m) =>
-        m.id === id ? { ...m, ...data } : m
-      ),
-    })),
+    set((state) => {
+      const existingManager = state.managers.find((m) => m.id === id);
+      if (existingManager) {
+        toast.success(
+          `Manager updated: ${existingManager.firstName} ${existingManager.lastName}.`
+        );
+      }
+
+      return {
+        managers: state.managers.map((m) =>
+          m.id === id ? { ...m, ...data } : m
+        ),
+      };
+    }),
   archiveManager: (id) =>
-    set((state) => ({
-      managers: state.managers.map((m) =>
-        m.id === id ? { ...m, status: "Archived" } : m
-      ),
-      archiveConfirmManager: null,
-    })),
+    set((state) => {
+      const existingManager = state.managers.find((m) => m.id === id);
+      if (existingManager) {
+        toast.success(
+          `Manager archived: ${existingManager.firstName} ${existingManager.lastName}.`
+        );
+      }
+
+      return {
+        managers: state.managers.map((m) =>
+          m.id === id ? { ...m, status: "Archived" } : m
+        ),
+        archiveConfirmManager: null,
+      };
+    }),
 
   // Archive confirmation
   archiveConfirmManager: null,
@@ -128,17 +147,31 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
 
   // Supplier CRUD
   updateSupplier: (id, data) =>
-    set((state) => ({
-      suppliers: state.suppliers.map((s) =>
-        s.id === id ? { ...s, ...data } : s
-      ),
-    })),
+    set((state) => {
+      const existingSupplier = state.suppliers.find((s) => s.id === id);
+      if (existingSupplier) {
+        toast.success(`Supplier updated: ${existingSupplier.companyName}.`);
+      }
+
+      return {
+        suppliers: state.suppliers.map((s) =>
+          s.id === id ? { ...s, ...data } : s
+        ),
+      };
+    }),
   archiveSupplier: (id) =>
-    set((state) => ({
-      suppliers: state.suppliers.map((s) =>
-        s.id === id ? { ...s, status: "Archived" } : s
-      ),
-    })),
+    set((state) => {
+      const existingSupplier = state.suppliers.find((s) => s.id === id);
+      if (existingSupplier) {
+        toast.success(`Supplier archived: ${existingSupplier.companyName}.`);
+      }
+
+      return {
+        suppliers: state.suppliers.map((s) =>
+          s.id === id ? { ...s, status: "Archived" } : s
+        ),
+      };
+    }),
 
   branches: [
     { id: 1, name: "Davao Main Hub", location: "Davao City, Davao del Sur" },

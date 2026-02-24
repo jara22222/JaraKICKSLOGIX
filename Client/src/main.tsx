@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"; // 1. Import these
+import { Toaster } from "sonner";
 import "./index.css";
 import { router } from "./router";
 
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     {/* 3. Wrap the RouterProvider with the QueryClientProvider */}
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
   </React.StrictMode>,
 );

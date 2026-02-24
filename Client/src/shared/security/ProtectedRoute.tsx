@@ -7,7 +7,15 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const token = localStorage.getItem("token");
   const userJson = localStorage.getItem("user");
-  const user = userJson ? JSON.parse(userJson) : null;
+  let user: { roles?: string[] } | null = null;
+
+  if (userJson && userJson !== "undefined" && userJson !== "null") {
+    try {
+      user = JSON.parse(userJson);
+    } catch {
+      user = null;
+    }
+  }
 
   if (!token || !user) {
     return <Navigate to="/login" replace />;
@@ -16,7 +24,7 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   // 2. Check if user has the required role (if roles are specified)
   if (
     allowedRoles &&
-    !user.roles.some((role: string) => allowedRoles.includes(role))
+    !user.roles?.some((role: string) => allowedRoles.includes(role))
   ) {
     // Redirect to a "Unauthorized" page or back to their default dashboard
     return <Navigate to="/unauthorized" replace />;
