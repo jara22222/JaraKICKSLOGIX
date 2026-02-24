@@ -1,18 +1,74 @@
 import SuperAdminHeader from "@/modules/super-admin/components/SuperAdminHeader";
 import AuditLogTable from "@/modules/super-admin/components/AuditLogTable";
-import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import { getAuditLogs } from "@/modules/super-admin/services/getauditlogs";
+import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function AuditLogs() {
-  const { auditLogs, branches } = useSuperAdminStore();
+  const { data: auditLogs = [], isLoading } = useQuery({
+    queryKey: ["superadmin-audit-logs"],
+    queryFn: getAuditLogs,
+  });
+
+  const [searchQuery, setSearchQuery] = useState("");
   const [branchFilter, setBranchFilter] = useState("All");
   const [actionFilter, setActionFilter] = useState("All");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
-  const uniqueActions = [...new Set(auditLogs.map((l) => l.action))];
-  const todayCount = auditLogs.filter((l) =>
-    l.datePerformed.includes("Feb 14"),
-  ).length;
+  const uniqueBranches = useMemo(
+    () => [...new Set(auditLogs.map((log) => log.branch).filter(Boolean))],
+    [auditLogs],
+  );
+  const uniqueActions = useMemo(
+    () => [...new Set(auditLogs.map((log) => log.action).filter(Boolean))],
+    [auditLogs],
+  );
+
+  const filteredLogs = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return auditLogs.filter((log) => {
+      const logDate = new Date(log.datePerformed);
+      const startDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
+      const endDate = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
+
+      const matchesSearch =
+        !query ||
+        log.userName.toLowerCase().includes(query) ||
+        log.userId.toLowerCase().includes(query) ||
+        log.action.toLowerCase().includes(query) ||
+        log.description.toLowerCase().includes(query) ||
+        log.branch.toLowerCase().includes(query);
+
+      const matchesBranch = branchFilter === "All" || log.branch === branchFilter;
+      const matchesAction = actionFilter === "All" || log.action === actionFilter;
+      const matchesFrom = !startDate || logDate >= startDate;
+      const matchesTo = !endDate || logDate <= endDate;
+
+      return (
+        matchesSearch &&
+        matchesBranch &&
+        matchesAction &&
+        matchesFrom &&
+        matchesTo
+      );
+    });
+  }, [auditLogs, searchQuery, branchFilter, actionFilter, dateFrom, dateTo]);
+
+  const today = new Date();
+  const todayCount = filteredLogs.filter((log) => {
+    const d = new Date(log.datePerformed);
+    return (
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate()
+    );
+  }).length;
+  const monitoredBranchCount = new Set(
+    filteredLogs.map((log) => log.branch).filter(Boolean),
+  ).size;
 
   return (
     <>
@@ -29,7 +85,7 @@ export default function AuditLogs() {
               Total Log Entries
             </p>
             <h3 className="text-3xl font-extrabold text-[#001F3F]">
-              {auditLogs.length}
+              {filteredLogs.length}
             </h3>
             <div className="mt-4 flex items-center gap-2 text-xs w-fit px-2 py-1 rounded-full text-[#001F3F] bg-blue-50">
               <span>Last 30 days</span>
@@ -53,7 +109,7 @@ export default function AuditLogs() {
               Branches Monitored
             </p>
             <h3 className="text-3xl font-extrabold text-[#001F3F]">
-              {branches.length}
+              {monitoredBranchCount}
             </h3>
             <div className="mt-4 flex items-center gap-2 text-xs w-fit px-2 py-1 rounded-full text-purple-600 bg-purple-50">
               <span>Full coverage</span>
@@ -69,6 +125,8 @@ export default function AuditLogs() {
               <input
                 type="text"
                 placeholder="Search logs by user, action, or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F] focus:border-transparent transition-all"
               />
             </div>
@@ -78,9 +136,9 @@ export default function AuditLogs() {
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 outline-none focus:border-[#001F3F] cursor-pointer"
             >
               <option value="All">All Branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.name}>
-                  {b.name}
+              {uniqueBranches.map((branch) => (
+                <option key={branch} value={branch}>
+                  {branch}
                 </option>
               ))}
             </select>
@@ -104,6 +162,8 @@ export default function AuditLogs() {
               </span>
               <input
                 type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
                 className="text-xs text-slate-600 font-medium focus:outline-none"
               />
             </div>
@@ -114,16 +174,21 @@ export default function AuditLogs() {
               </span>
               <input
                 type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
                 className="text-xs text-slate-600 font-medium focus:outline-none"
               />
             </div>
           </div>
         </div>
 
-        <AuditLogTable
-          branchFilter={branchFilter}
-          actionFilter={actionFilter}
-        />
+        {isLoading ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-sm text-slate-500">
+            Loading audit logs...
+          </div>
+        ) : (
+          <AuditLogTable logs={filteredLogs} />
+        )}
       </div>
     </>
   );

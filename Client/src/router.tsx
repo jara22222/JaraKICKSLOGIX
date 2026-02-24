@@ -16,12 +16,16 @@ import OutboundManagement from "./modules/outbound/pages/OutboundManagement";
 import InventoryManagement from "./modules/inventory/pages/InventoryManagement";
 import AdminAccessControl from "./modules/access-control/pages/AdminAccessControl";
 import BinLocationManagement from "./modules/bin-management/pages/BinLocationManagement";
+import BinsArchived from "./modules/bin-management/pages/BinsArchived";
+import ProfileSettings from "./modules/access-control/pages/ProfileSettings";
 
 // Super Admin Pages
 import SuperAdminOverview from "./modules/super-admin/pages/SuperAdminOverview";
 import BranchManagers from "./modules/super-admin/pages/BranchManagers";
 import SupplierRegistry from "./modules/super-admin/pages/SupplierRegistry";
 import AuditLogs from "./modules/super-admin/pages/AuditLogs";
+import ArchivedUsers from "./modules/super-admin/pages/ArchivedUsers";
+import AccountSettings from "./modules/super-admin/pages/AccountSettings";
 
 // Inbound Coordinator Pages
 import InboundDashboard from "./modules/inbound/pages/InboundDashboard";
@@ -89,9 +93,15 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <SuperAdminOverview /> },
           { path: "managers", element: <BranchManagers /> },
+          { path: "archived", element: <ArchivedUsers /> },
           { path: "suppliers", element: <SupplierRegistry /> },
           { path: "auditlogs", element: <AuditLogs /> },
         ],
+      },
+      {
+        path: "/settings/profile",
+        element: <SuperAdminLayout />,
+        children: [{ index: true, element: <AccountSettings /> }],
       },
     ],
   },
@@ -195,6 +205,10 @@ export const router = createBrowserRouter([
         element: <BinLocationManagement />,
       },
       {
+        path: "binsarchived",
+        element: <BinsArchived />,
+      },
+      {
         path: "inboundmanagement",
         element: <InboundManagement />,
       },
@@ -206,12 +220,21 @@ export const router = createBrowserRouter([
         path: "inventorymanagement",
         element: <InventoryManagement />,
       },
+      {
+        path: "profilesettings",
+        element: <ProfileSettings />,
+      },
     ],
   },
 
   {
-    path: "binlocation/product/:id",
-    element: <BinLocation />,
+    element: <ProtectedRoute allowedRoles={["OutboundCoordinator"]} />,
+    children: [
+      {
+        path: "binlocation/product/:id",
+        element: <BinLocation />,
+      },
+    ],
   },
 
   // ─── 404 CATCH-ALL ─────────────────────────────

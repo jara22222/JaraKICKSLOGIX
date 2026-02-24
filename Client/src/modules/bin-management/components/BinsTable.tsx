@@ -1,11 +1,10 @@
 import {
+  Archive,
   Edit,
   MapPin,
-  Printer,
-  QrCode,
-  Archive,
-  X,
   Pencil,
+  QrCode,
+  X,
 } from "lucide-react";
 import HeaderCell from "@/shared/components/HeaderCell";
 import StatusBadge from "@/shared/components/StatusBadge";
@@ -13,115 +12,215 @@ import Pagination from "@/shared/components/Pagination";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import ConfirmationModal from "@/shared/components/ConfirmationModal";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
-import { UseGetBinState } from "@/modules/bin-management/store/UseGetBins";
 import { UseBinState } from "@/modules/bin-management/store/UseBinManagement";
-import { useState } from "react";
+import {
+  archiveBinLocation,
+  createBinLocation,
+  getBinLocations,
+  updateBinLocation,
+  type BinLocationItemResponse,
+  type BinSize,
+} from "@/modules/bin-management/services/binLocation";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import QRCode from "qrcode";
 
-const CSV_PDF_HEADERS = ["Bin Code", "Zone", "Current", "Capacity", "Status"];
+const CSV_PDF_HEADERS = [
+  "Bin ID",
+  "Bin Location",
+  "Bin Size",
+  "Bin Status",
+  "Bin Capacity",
+  "Created At",
+];
 
-type BinItem = {
-  id: number;
-  code: string;
-  zone: string;
-  capacity: number;
-  current: number;
-  status: string;
-};
-
-export default function BinsTable() {
+export default function BinsTable({
+  searchQuery,
+  sizeFilter,
+  statusFilter,
+}: {
+  searchQuery: string;
+  sizeFilter: string;
+  statusFilter: string;
+}) {
+  const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const INITIAL_BINS = UseGetBinState((b) => b.NEW_INITIAL_BINS);
   const setQrModalData = UseBinState((b) => b.setQrModalData);
   const isAddModalOpen = UseBinState((b) => b.isAddModalOpen);
   const setIsAddModalOpen = UseBinState((b) => b.setIsAddModalOpen);
   const qrModalData = UseBinState((b) => b.qrModalData);
+  const [qrImageDataUrl, setQrImageDataUrl] = useState("");
 
-  // Edit modal state
-  const [editTarget, setEditTarget] = useState<BinItem | null>(null);
-  const [editCode, setEditCode] = useState("");
-  const [editZone, setEditZone] = useState("");
-  const [editCapacity, setEditCapacity] = useState(50);
-
-  // Archive confirmation state
-  const [archiveTarget, setArchiveTarget] = useState<BinItem | null>(null);
+  const [editTarget, setEditTarget] = useState<BinLocationItemResponse | null>(
+    null,
+  );
+  const [editLocation, setEditLocation] = useState("");
+  const [editSize, setEditSize] = useState<BinSize>("M");
+  const [editCapacity, setEditCapacity] = useState(20);
+  const [editStatus, setEditStatus] = useState<"Available" | "Occupied">(
+    "Available",
+  );
+  const [archiveTarget, setArchiveTarget] =
+    useState<BinLocationItemResponse | null>(null);
 
   const [newBin, setNewBin] = useState({
-    code: "",
-    zone: "Zone A (High Velocity)",
-    capacity: 50,
+    binLocation: "",
+    binSize: "M" as BinSize,
+    binCapacity: 20,
   });
 
-  const totalLength = INITIAL_BINS.length;
-  const displayedData = INITIAL_BINS.slice(
+  const { data: binsData = [], isLoading } = useQuery({
+    queryKey: ["branchmanager-bins"],
+    queryFn: getBinLocations,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createBinLocation,
+    onSuccess: (data) => {
+      toast.success(data.message || "Bin location created successfully.");
+      queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
+      setIsAddModalOpen();
+      setNewBin({ binLocation: "", binSize: "M", binCapacity: 20 });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: {
+        binLocation: string;
+        binSize: BinSize;
+        binCapacity: number;
+        binStatus: "Available" | "Occupied";
+      };
+    }) => updateBinLocation(id, payload),
+    onSuccess: (data) => {
+      toast.success(data.message || "Bin location updated successfully.");
+      queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
+      setEditTarget(null);
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: archiveBinLocation,
+    onSuccess: (data) => {
+      toast.success(data.message || "Bin location archived successfully.");
+      queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
+      queryClient.invalidateQueries({ queryKey: ["branchmanager-archived-bins"] });
+      setArchiveTarget(null);
+    },
+  });
+
+  const filteredBins = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return binsData.filter((bin) => {
+      const matchesSearch =
+        !query ||
+        bin.binLocation.toLowerCase().includes(query) ||
+        bin.binId.toLowerCase().includes(query);
+      const matchesSize = sizeFilter === "ALL" || bin.binSize === sizeFilter;
+      const matchesStatus =
+        statusFilter === "ALL" || bin.binStatus === statusFilter;
+      return matchesSearch && matchesSize && matchesStatus;
+    });
+  }, [binsData, searchQuery, sizeFilter, statusFilter]);
+
+  const displayedData = filteredBins.slice(
     (currentPage - 1) * pageSize,
-    currentPage * pageSize
+    currentPage * pageSize,
   );
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sizeFilter, statusFilter]);
+
+  useEffect(() => {
+    if (!qrModalData) {
+      setQrImageDataUrl("");
+      return;
+    }
+
+    QRCode.toDataURL(qrModalData.qrCodeString, { width: 220, margin: 1 })
+      .then(setQrImageDataUrl)
+      .catch(() => {
+        setQrImageDataUrl("");
+        toast.error("Failed to generate QR code preview.");
+      });
+  }, [qrModalData]);
+
   const handleCSV = () => {
-    const rows = INITIAL_BINS.map((b) => [
-      b.code,
-      b.zone,
-      String(b.current),
-      String(b.capacity),
-      b.status,
+    const rows = filteredBins.map((bin) => [
+      bin.binId,
+      bin.binLocation,
+      bin.binSize,
+      bin.binStatus,
+      String(bin.binCapacity),
+      new Date(bin.createdAt).toLocaleString(),
     ]);
     exportToCSV("bin-locations", CSV_PDF_HEADERS, rows);
   };
 
   const handlePDF = () => {
-    const rows = INITIAL_BINS.map((b) => [
-      b.code,
-      b.zone,
-      String(b.current),
-      String(b.capacity),
-      b.status,
+    const rows = filteredBins.map((bin) => [
+      bin.binId,
+      bin.binLocation,
+      bin.binSize,
+      bin.binStatus,
+      String(bin.binCapacity),
+      new Date(bin.createdAt).toLocaleString(),
     ]);
-    exportToPDF(
-      "bin-locations",
-      "Bin Locations Report",
-      CSV_PDF_HEADERS,
-      rows
-    );
+    exportToPDF("bin-locations", "Bin Locations Report", CSV_PDF_HEADERS, rows);
   };
 
-  const handleOpenEdit = (bin: BinItem) => {
-    setEditCode(bin.code);
-    setEditZone(bin.zone);
-    setEditCapacity(bin.capacity);
+  const handleOpenEdit = (bin: BinLocationItemResponse) => {
     setEditTarget(bin);
+    setEditLocation(bin.binLocation);
+    setEditSize((bin.binSize as BinSize) || "M");
+    setEditCapacity(bin.binCapacity);
+    setEditStatus(bin.binStatus === "Occupied" ? "Occupied" : "Available");
+  };
+
+  const handleCreateBin = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!newBin.binLocation.trim()) {
+      toast.error("Bin location is required.");
+      return;
+    }
+
+    createMutation.mutate({
+      binLocation: newBin.binLocation.trim().toUpperCase(),
+      binSize: newBin.binSize,
+      binCapacity: newBin.binCapacity,
+    });
   };
 
   const handleSaveEdit = () => {
-    // In a real app, this would update the bin in the store/API
-    setEditTarget(null);
-  };
-
-  const handleConfirmArchive = () => {
-    if (archiveTarget) {
-      INITIAL_BINS.filter((b) => b.id !== archiveTarget.id);
+    if (!editTarget) return;
+    if (!editLocation.trim()) {
+      toast.error("Bin location is required.");
+      return;
     }
-    setArchiveTarget(null);
+
+    updateMutation.mutate({
+      id: editTarget.binId,
+      payload: {
+        binLocation: editLocation.trim().toUpperCase(),
+        binSize: editSize,
+        binCapacity: editCapacity,
+        binStatus: editStatus,
+      },
+    });
   };
 
-  const handleAddBin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const bin = {
-      id: INITIAL_BINS.length + 1,
-      code: newBin.code.toUpperCase(),
-      zone: newBin.zone,
-      capacity: newBin.capacity,
-      current: 0,
-      status: "Active",
-    };
-    INITIAL_BINS.push(bin);
-    setIsAddModalOpen();
-    setNewBin({ code: "", zone: "Zone A (High Velocity)", capacity: 50 });
-  };
-
-  const handlePrintSingle = (bin: BinItem) => {
-    alert(`Printing label for ${bin.code}...`);
+  const handleArchiveBin = () => {
+    if (!archiveTarget) return;
+    archiveMutation.mutate(archiveTarget.binId);
   };
 
   return (
@@ -131,83 +230,83 @@ export default function BinsTable() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100">
-                <HeaderCell label="Bin Code" />
-                <HeaderCell label="Zone / Area" />
+                <HeaderCell label="Bin Location" />
+                <HeaderCell label="Bin Size" />
                 <HeaderCell label="Capacity" />
                 <HeaderCell label="Status" />
                 <HeaderCell label="Actions" align="right" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {displayedData.map((bin) => (
-                <tr
-                  key={bin.id}
-                  className="even:bg-slate-50/50 hover:bg-blue-50/30"
-                >
-                  <td className="p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-[#001F3F]">
-                        <MapPin size={18} />
-                      </div>
-                      <span className="font-mono font-bold text-[#001F3F] text-sm bg-blue-50 px-2 py-1 rounded border border-blue-100">
-                        {bin.code}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <span className="text-sm font-medium text-slate-600">
-                      {bin.zone}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${bin.current >= bin.capacity ? "bg-red-500" : "bg-[#FFD700]"}`}
-                          style={{
-                            width: `${(bin.current / bin.capacity) * 100}%`,
-                          }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {bin.current} / {bin.capacity}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <StatusBadge
-                      status={bin.status}
-                      current={bin.current}
-                      capacity={bin.capacity}
-                    />
-                  </td>
-                  <td className="p-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => setQrModalData(INITIAL_BINS)}
-                        className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg transition-colors"
-                        title="View/Print QR"
-                      >
-                        <QrCode size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleOpenEdit(bin)}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
-                        title="Edit Bin"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => setArchiveTarget(bin)}
-                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                        title="Archive Bin"
-                      >
-                        <Archive size={18} />
-                      </button>
-                    </div>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="p-4 text-sm text-slate-500">
+                    Loading bin locations...
                   </td>
                 </tr>
-              ))}
+              ) : displayedData.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-4 text-sm text-slate-500">
+                    No bin locations found.
+                  </td>
+                </tr>
+              ) : (
+                displayedData.map((bin) => (
+                  <tr
+                    key={bin.binId}
+                    className="even:bg-slate-50/50 hover:bg-blue-50/30"
+                  >
+                    <td className="p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-[#001F3F]">
+                          <MapPin size={18} />
+                        </div>
+                        <span className="font-mono font-bold text-[#001F3F] text-sm bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                          {bin.binLocation}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-sm font-medium text-slate-600">
+                        {bin.binSize}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-xs text-slate-500 font-medium">
+                        {bin.binCapacity}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <StatusBadge status={bin.binStatus} />
+                    </td>
+                    <td className="p-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setQrModalData(bin)}
+                          className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg transition-colors"
+                          title="View QR"
+                        >
+                          <QrCode size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEdit(bin)}
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Edit Bin"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => setArchiveTarget(bin)}
+                          className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          title="Archive Bin"
+                        >
+                          <Archive size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -215,170 +314,154 @@ export default function BinsTable() {
           <ExportToolbar onExportCSV={handleCSV} onExportPDF={handlePDF} />
           <Pagination
             currentPage={currentPage}
-            totalItems={totalLength}
+            totalItems={filteredBins.length}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
-            onPageSizeChange={(s) => {
-              setPageSize(s);
+            onPageSizeChange={(size) => {
+              setPageSize(size);
               setCurrentPage(1);
             }}
           />
         </div>
-
-        {/* --- QR PREVIEW MODAL --- */}
-        {qrModalData && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#001F3F]/80 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-[scaleIn_0.2s_ease-out] relative">
-              <button
-                onClick={() => setQrModalData(null)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-red-500 z-10"
-              >
-                <X size={24} />
-              </button>
-
-              <div className="p-8 flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-[#FFD700] rounded-full flex items-center justify-center text-[#001F3F] shadow-lg mb-6">
-                  <Printer size={32} />
-                </div>
-
-                <h3 className="text-2xl font-black text-[#001F3F] mb-1">
-                  Print Label
-                </h3>
-                <p className="text-slate-500 text-sm mb-6">
-                  Ready to print for thermal sticker
-                </p>
-
-                {/* TICKET MOCKUP */}
-                <div className="bg-white border-2 border-slate-800 rounded-lg p-4 w-full relative shadow-sm">
-                  <div className="w-32 h-32 bg-slate-900 mx-auto mb-3 grid grid-cols-6 grid-rows-6 gap-0.5 p-1">
-                    {Array.from({ length: 36 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className={`bg-white ${Math.random() > 0.5 ? "opacity-100" : "opacity-0"}`}
-                      ></div>
-                    ))}
-                  </div>
-
-                  <div className="text-center font-mono">
-                    <p className="text-2xl font-black text-slate-900 leading-none">
-                      {qrModalData.code}
-                    </p>
-                    <p className="text-[10px] uppercase font-bold text-slate-500 mt-1">
-                      {qrModalData.zone}
-                    </p>
-                  </div>
-
-                  <div className="absolute -left-1 top-1/2 w-2 h-4 bg-slate-200 rounded-r-full"></div>
-                  <div className="absolute -right-1 top-1/2 w-2 h-4 bg-slate-200 rounded-l-full"></div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    handlePrintSingle(qrModalData);
-                    setQrModalData(null);
-                  }}
-                  className="w-full mt-8 py-3 bg-[#001F3F] text-white font-bold rounded-xl hover:bg-[#00162e] shadow-lg flex items-center justify-center gap-2"
-                >
-                  <Printer size={18} /> Send to Printer
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* --- ADD BIN MODAL --- */}
-        {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#001F3F]/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-[scaleIn_0.2s_ease-out]">
-              <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                <h3 className="font-bold text-[#001F3F]">Create New Bin</h3>
-                <button
-                  onClick={setIsAddModalOpen}
-                  className="text-slate-400 hover:text-red-500"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleAddBin} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                    Bin Code
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newBin.code}
-                    onChange={(e) =>
-                      setNewBin({ ...newBin, code: e.target.value })
-                    }
-                    className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none"
-                    placeholder="e.g. A-05-12"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Format: Aisle-Rack-Shelf
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                    Zone Assignment
-                  </label>
-                  <select
-                    value={newBin.zone}
-                    onChange={(e) =>
-                      setNewBin({ ...newBin, zone: e.target.value })
-                    }
-                    className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none bg-white"
-                  >
-                    <option>Zone A (High Velocity)</option>
-                    <option>Zone B (Bulk Storage)</option>
-                    <option>Zone C (Returns)</option>
-                    <option>Zone D (Secure Cage)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                    Capacity (Units)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={newBin.capacity}
-                    onChange={(e) =>
-                      setNewBin({
-                        ...newBin,
-                        capacity: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none"
-                  />
-                </div>
-
-                <div className="pt-4 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={setIsAddModalOpen}
-                    className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-lg hover:bg-slate-50 text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 bg-[#001F3F] text-white font-bold rounded-lg hover:bg-[#00162e] text-sm shadow-md"
-                  >
-                    Create Bin
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* --- EDIT BIN MODAL --- */}
+      {qrModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#001F3F]/80 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden relative">
+            <button
+              onClick={() => setQrModalData(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-red-500 z-10"
+            >
+              <X size={24} />
+            </button>
+
+            <div className="p-8 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-[#FFD700] rounded-full flex items-center justify-center text-[#001F3F] shadow-lg mb-6">
+                <QrCode size={32} />
+              </div>
+              <h3 className="text-2xl font-black text-[#001F3F] mb-1">
+                Bin QR Code
+              </h3>
+              <p className="text-slate-500 text-sm mb-6">
+                Generated code for bin location.
+              </p>
+              <div className="bg-white border-2 border-slate-800 rounded-lg p-4 w-full shadow-sm">
+                {qrImageDataUrl ? (
+                  <img
+                    src={qrImageDataUrl}
+                    alt={`QR for ${qrModalData.binLocation}`}
+                    className="w-44 h-44 mx-auto mb-3"
+                  />
+                ) : (
+                  <div className="w-44 h-44 mx-auto mb-3 bg-slate-100 rounded animate-pulse" />
+                )}
+                <div className="text-center font-mono">
+                  <p className="text-xl font-black text-slate-900 leading-none">
+                    {qrModalData.binLocation}
+                  </p>
+                  <p className="text-[10px] uppercase font-bold text-slate-500 mt-1">
+                    {qrModalData.binId} • {qrModalData.binSize} •{" "}
+                    {qrModalData.binStatus}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#001F3F]/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-[#001F3F]">Create New Bin</h3>
+              <button
+                onClick={setIsAddModalOpen}
+                className="text-slate-400 hover:text-red-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateBin} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Bin Location
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newBin.binLocation}
+                  onChange={(event) =>
+                    setNewBin({ ...newBin, binLocation: event.target.value })
+                  }
+                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none"
+                  placeholder="e.g. A-05-12"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Bin Size
+                </label>
+                <select
+                  value={newBin.binSize}
+                  onChange={(event) =>
+                    setNewBin({
+                      ...newBin,
+                      binSize: event.target.value as BinSize,
+                    })
+                  }
+                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none bg-white"
+                >
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                  <option value="XXL">XXL</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Capacity (Units)
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={newBin.binCapacity}
+                  onChange={(event) =>
+                    setNewBin({
+                      ...newBin,
+                      binCapacity: parseInt(event.target.value || "1", 10),
+                    })
+                  }
+                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={setIsAddModalOpen}
+                  className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-lg hover:bg-slate-50 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  className="flex-1 py-3 bg-[#001F3F] text-white font-bold rounded-lg hover:bg-[#00162e] text-sm shadow-md disabled:opacity-60"
+                >
+                  {createMutation.isPending ? "Creating..." : "Create Bin"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {editTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div
@@ -392,7 +475,7 @@ export default function BinsTable() {
                   Edit Bin Location
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {editTarget.code} &middot; {editTarget.zone}
+                  {editTarget.binId} &middot; {editTarget.binLocation}
                 </p>
               </div>
               <button
@@ -405,28 +488,46 @@ export default function BinsTable() {
             <div className="p-8 space-y-5">
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
-                  Bin Code
+                  Bin Location
                 </label>
                 <input
                   type="text"
-                  value={editCode}
-                  onChange={(e) => setEditCode(e.target.value)}
-                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
+                  value={editLocation}
+                  onChange={(event) => setEditLocation(event.target.value)}
+                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none transition-all"
                 />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
-                  Zone Assignment
+                  Bin Size
                 </label>
                 <select
-                  value={editZone}
-                  onChange={(e) => setEditZone(e.target.value)}
+                  value={editSize}
+                  onChange={(event) => setEditSize(event.target.value as BinSize)}
                   className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none bg-white"
                 >
-                  <option>Zone A (High Velocity)</option>
-                  <option>Zone B (Bulk Storage)</option>
-                  <option>Zone C (Returns)</option>
-                  <option>Zone D (Secure Cage)</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                  <option value="XXL">XXL</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+                  Bin Status
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(event) =>
+                    setEditStatus(
+                      event.target.value === "Occupied" ? "Occupied" : "Available",
+                    )
+                  }
+                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none bg-white"
+                >
+                  <option value="Available">Available</option>
+                  <option value="Occupied">Occupied</option>
                 </select>
               </div>
               <div>
@@ -437,7 +538,9 @@ export default function BinsTable() {
                   type="number"
                   min="1"
                   value={editCapacity}
-                  onChange={(e) => setEditCapacity(parseInt(e.target.value))}
+                  onChange={(event) =>
+                    setEditCapacity(parseInt(event.target.value || "1", 10))
+                  }
                   className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none"
                 />
               </div>
@@ -451,27 +554,27 @@ export default function BinsTable() {
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="px-6 py-2 bg-[#001F3F] text-white text-xs font-bold uppercase rounded-lg hover:bg-[#00162e] shadow-md shadow-blue-900/10 transition-all hover:-translate-y-0.5 flex items-center gap-2"
+                disabled={updateMutation.isPending}
+                className="px-6 py-2 bg-[#001F3F] text-white text-xs font-bold uppercase rounded-lg hover:bg-[#00162e] shadow-md transition-all flex items-center gap-2 disabled:opacity-60"
               >
                 <Pencil className="size-3.5" />
-                Save Changes
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- ARCHIVE CONFIRMATION MODAL --- */}
       <ConfirmationModal
         isOpen={!!archiveTarget}
         onClose={() => setArchiveTarget(null)}
-        onConfirm={handleConfirmArchive}
+        onConfirm={handleArchiveBin}
         title="Archive Bin Location"
         description="Are you sure you want to archive this bin location? It will be removed from active bin assignments."
-        confirmLabel="Archive Bin"
+        confirmLabel={archiveMutation.isPending ? "Archiving..." : "Archive Bin"}
         confirmVariant="warning"
         confirmIcon={<Archive className="size-3.5" />}
-        note="Archived bins retain their historical data. All items currently in this bin must be relocated before archiving."
+        note="Archived bins retain historical logs and can be recreated later if needed."
       >
         {archiveTarget && (
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-4">
@@ -480,11 +583,10 @@ export default function BinsTable() {
             </div>
             <div className="min-w-0">
               <p className="font-mono text-sm font-bold text-[#001F3F]">
-                {archiveTarget.code}
+                {archiveTarget.binLocation}
               </p>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {archiveTarget.zone} &middot; {archiveTarget.current}/
-                {archiveTarget.capacity} units
+                {archiveTarget.binSize} &middot; {archiveTarget.binCapacity} units
               </p>
             </div>
           </div>

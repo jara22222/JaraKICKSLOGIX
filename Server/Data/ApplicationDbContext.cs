@@ -17,6 +17,7 @@ namespace Server.Data
         }
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Products> Products { get; set; }
+        public DbSet<BinLocation> BinLocations { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             // Always call the base method first for Identity tables
@@ -28,6 +29,9 @@ namespace Server.Data
                 .WithMany(u => u.Products)      // User has Many Products
                 .HasForeignKey(p => p.SupplierId)   // Link them via UserId
                 .OnDelete(DeleteBehavior.Cascade); // If User is deleted, delete their products (or use .Restrict to prevent deletion)
+
+            builder.Entity<BinLocation>()
+                .HasKey(bin => bin.BinId);
         }
 
 

@@ -2,12 +2,82 @@ import SuperAdminHeader from "@/modules/super-admin/components/SuperAdminHeader"
 import SupplierRegistrationTable from "@/modules/super-admin/components/SupplierRegistrationTable";
 import SupplierFormModal from "@/modules/super-admin/components/SupplierFormModal";
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import { archiveSupplierAccount, getSuppliers } from "../services/supplier";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 export default function SupplierRegistry() {
-  const { suppliers, toggleSupplierModal } = useSuperAdminStore();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { suppliers, toggleSupplierModal, setSuppliers } = useSuperAdminStore();
+
+  const { data: supplierData, isLoading, refetch } = useQuery({
+    queryKey: ["superadmin-suppliers"],
+    queryFn: getSuppliers,
+  });
+
+  useEffect(() => {
+    if (!supplierData) return;
+
+    const formatCreatedAt = (value?: string) => {
+      if (!value) return "N/A";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "N/A";
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+      });
+    };
+
+    const mappedSuppliers = supplierData.map((supplier, index) => ({
+      userId: supplier.id,
+      id: index + 1,
+      companyName: supplier.companyName ?? "",
+      companyAddress: supplier.companyAddress ?? "",
+      contactPerson: supplier.contactPerson ?? "",
+      email: supplier.email ?? "",
+      agreement: supplier.agreement ?? false,
+      status: supplier.status ?? "Pending",
+      createdAt: formatCreatedAt(supplier.createdAt),
+    }));
+
+    setSuppliers(mappedSuppliers);
+  }, [supplierData, setSuppliers]);
+
+  const archiveMutation = useMutation({
+    mutationFn: archiveSupplierAccount,
+    onSuccess: (data) => {
+      toast.success(data.message || "Supplier archived successfully.");
+      void refetch();
+    },
+  });
+
+  const filteredSuppliers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return suppliers;
+
+    return suppliers.filter((supplier) => {
+      return (
+        supplier.companyName.toLowerCase().includes(query) ||
+        supplier.contactPerson.toLowerCase().includes(query) ||
+        supplier.email.toLowerCase().includes(query) ||
+        supplier.companyAddress.toLowerCase().includes(query)
+      );
+    });
+  }, [suppliers, searchQuery]);
+
   const activeCount = suppliers.filter((s) => s.status === "Active").length;
   const pendingCount = suppliers.filter((s) => s.status === "Pending").length;
+
+  const handleArchiveSupplier = (supplier: (typeof suppliers)[number]) => {
+    if (!supplier.userId || supplier.userId.startsWith("seed-")) {
+      toast.error("Supplier ID is missing. Please refresh the page.");
+      return;
+    }
+    archiveMutation.mutate(supplier.userId);
+  };
 
   return (
     <>
@@ -63,6 +133,8 @@ export default function SupplierRegistry() {
             <input
               type="text"
               placeholder="Search supplier by company name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all shadow-sm"
             />
           </div>
@@ -75,7 +147,16 @@ export default function SupplierRegistry() {
           </button>
         </div>
 
-        <SupplierRegistrationTable />
+        {isLoading ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-sm text-slate-500">
+            Loading suppliers...
+          </div>
+        ) : (
+          <SupplierRegistrationTable
+            suppliers={filteredSuppliers}
+            onArchiveSupplier={handleArchiveSupplier}
+          />
+        )}
         <SupplierFormModal />
       </div>
     </>

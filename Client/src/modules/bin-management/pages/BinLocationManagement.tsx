@@ -2,12 +2,16 @@ import AcessControllHeader from "@/shared/layout/Header";
 import BinsTable from "@/modules/bin-management/components/BinsTable";
 import { UseBinState } from "@/modules/bin-management/store/UseBinManagement";
 import { Plus, Printer, Search } from "lucide-react";
+import { useState } from "react";
 
 export default function BinLocationManagement() {
   const setIsAddModalOpen = UseBinState((b) => b.setIsAddModalOpen);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sizeFilter, setSizeFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   const handlePrintAll = () => {
-    alert("Sending all QR Codes to connected thermal printer...");
+    window.print();
   };
 
   return (
@@ -24,21 +28,32 @@ export default function BinLocationManagement() {
               <Search className="absolute left-4 top-3.5 text-slate-400 size-4 group-focus-within:text-[#001F3F] transition-colors" />
               <input
                 type="text"
-                placeholder="Search bin code (e.g. A-01-05)..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search bin location (e.g. A-01-05)..."
                 className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all shadow-sm"
               />
             </div>
-            <select className="h-[46px] px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 uppercase tracking-wider outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] cursor-pointer shadow-sm">
-              <option>All Zones</option>
-              <option>Zone A (High Vel)</option>
-              <option>Zone B (Bulk)</option>
-              <option>Zone C (Returns)</option>
+            <select
+              value={sizeFilter}
+              onChange={(event) => setSizeFilter(event.target.value)}
+              className="h-[46px] px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 uppercase tracking-wider outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] cursor-pointer shadow-sm"
+            >
+              <option value="ALL">All Sizes</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+              <option value="XXL">XXL</option>
             </select>
-            <select className="h-[46px] px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 uppercase tracking-wider outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] cursor-pointer shadow-sm">
-              <option>All Statuses</option>
-              <option>Active</option>
-              <option>Full</option>
-              <option>Maintenance</option>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="h-[46px] px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 uppercase tracking-wider outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] cursor-pointer shadow-sm"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="Available">Available</option>
+              <option value="Occupied">Occupied</option>
             </select>
           </div>
           <div className="flex items-center gap-3">
@@ -59,7 +74,11 @@ export default function BinLocationManagement() {
           </div>
         </div>
 
-        <BinsTable />
+        <BinsTable
+          searchQuery={searchQuery}
+          sizeFilter={sizeFilter}
+          statusFilter={statusFilter}
+        />
       </div>
     </>
   );

@@ -1,9 +1,11 @@
 import {
-  Building2,
+  Archive,
   Eye,
   Footprints,
+  LogOut,
   Menu,
   ScrollText,
+  Settings,
   ShieldCheck,
   Truck,
   Users,
@@ -11,9 +13,11 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { UseAuth } from "../security/UseAuth";
 
 export default function SuperAdminMobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { user, logout } = UseAuth();
 
   const NavItem = ({
     icon,
@@ -92,14 +96,10 @@ export default function SuperAdminMobileSidebar() {
           </p>
           <NavItem icon={<Eye className="size-5" />} label="Overview" link="" />
           <NavItem icon={<Users className="size-5" />} label="Branch Managers" link="managers" />
+          <NavItem icon={<Archive className="size-5" />} label="Archived Users" link="archived" />
           <NavItem icon={<Truck className="size-5" />} label="Supplier Registry" link="suppliers" />
           <NavItem icon={<ScrollText className="size-5" />} label="Audit Logs" link="auditlogs" />
-
-          <div className="my-4 border-t border-white/10"></div>
-          <p className="px-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-            Quick Access
-          </p>
-          <NavItem icon={<Building2 className="size-5" />} label="Admin Panel" link="/accesscontroll" />
+          <NavItem icon={<Settings className="size-5" />} label="Account Settings" link="/settings/profile" />
         </nav>
 
         <div className="p-4 border-t border-white/10">
@@ -109,13 +109,20 @@ export default function SuperAdminMobileSidebar() {
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-white group-hover:text-[#FFD700] transition-colors">
-                Jara Joaquin
+                {user?.firstName} {user?.lastName}
               </span>
               <span className="text-[10px] text-[#FFD700] uppercase tracking-wide opacity-80">
-                Super Admin
+                {user?.roles?.[0] || "Super Admin"}
               </span>
             </div>
           </div>
+          <button
+            onClick={logout}
+            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
+          >
+            <LogOut className="size-4" />
+            Sign Out
+          </button>
         </div>
       </aside>
     </>

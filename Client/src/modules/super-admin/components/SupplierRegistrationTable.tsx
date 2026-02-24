@@ -8,9 +8,14 @@ import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
 import { CheckCircle2, Clock, Pencil, Archive } from "lucide-react";
 import { useState } from "react";
 
-export default function SupplierRegistrationTable() {
-  const { suppliers, archiveSupplier, openEditSupplier } =
-    useSuperAdminStore();
+export default function SupplierRegistrationTable({
+  suppliers,
+  onArchiveSupplier,
+}: {
+  suppliers: Supplier[];
+  onArchiveSupplier: (supplier: Supplier) => void;
+}) {
+  const { openEditSupplier } = useSuperAdminStore();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [archiveTarget, setArchiveTarget] = useState<Supplier | null>(null);
@@ -191,7 +196,7 @@ export default function SupplierRegistrationTable() {
         isOpen={!!archiveTarget}
         onClose={() => setArchiveTarget(null)}
         onConfirm={() => {
-          if (archiveTarget) archiveSupplier(archiveTarget.id);
+          if (archiveTarget) onArchiveSupplier(archiveTarget);
           setArchiveTarget(null);
         }}
         title="Archive Supplier"

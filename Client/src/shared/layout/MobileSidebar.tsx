@@ -1,44 +1,46 @@
 import {
+  Archive,
   Boxes,
-  ChevronRight,
   FileCheck,
   FolderKanban,
   Footprints,
   HandCoins,
+  LogOut,
   Menu,
   PieChart,
   QrCode,
+  Settings,
   Users,
   X,
 } from "lucide-react";
-// Note: If 'Link' is for navigation, import it from 'react-router-dom'.
-// If it was meant to be an icon, rename the import (e.g. LinkIcon) to avoid conflicts.
 import { Link, useLocation } from "react-router-dom"; // Assuming you use react-router
 import { useState } from "react";
+import type { ReactNode } from "react";
+import { UseAuth } from "../security/UseAuth";
 
 export default function MobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { user, logout } = UseAuth();
 
   const NavItem = ({
     icon,
     label,
     link,
   }: {
-    icon: any;
+    icon: ReactNode;
     label: string;
     link: string;
   }) => {
     const location = useLocation();
-    const isActive =
-      link === ""
-        ? location.pathname === "/accesscontroll"
-        : location.pathname.includes(link);
-    {
-      console.log(location.pathname);
-    }
+    const absolutePath = link.startsWith("/accesscontroll")
+      ? link
+      : `/accesscontroll/${link}`.replace(/\/$/, "");
+    const isActive = location.pathname === absolutePath;
+
     return (
       <Link
-        to={`/accesscontroll${link}`}
+        to={absolutePath}
+        onClick={() => setIsMobileOpen(false)}
         className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all group ${
           isActive
             ? "bg-gradient-to-r from-[#FFD700]/10 to-transparent border-l-4 border-[#FFD700] text-white"
@@ -52,8 +54,6 @@ export default function MobileSidebar() {
         >
           {icon}
         </div>
-
-        {/* FIXED: Simplified classes. Removed 'hidden' and kept just one font-weight logic */}
         <span className={`text-sm ${isActive ? "font-bold" : "font-medium"}`}>
           {label}
         </span>
@@ -67,9 +67,8 @@ export default function MobileSidebar() {
         onClick={() => setIsMobileOpen(!isMobileOpen)}
         className={`fixed top-4 lg:hidden z-[60] p-2 bg-[#001F3F] text-white rounded-lg shadow-lg hover:bg-[#00162e] flex flex-col
     transition-all duration-300 ease-in-out 
-    ${isMobileOpen ? "left-[264px] animate-beat" : "left-4"}`}
+    ${isMobileOpen ? "left-[264px]" : "left-4"}`}
       >
-        {/* Removed <i> wrapper here too */}
         {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
@@ -101,7 +100,6 @@ export default function MobileSidebar() {
 
         {/* Nav Links */}
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto py-4 scrollbar-hide">
-          {/* Cleaned up conflicting classes: removed text-[10px] and font-bold vs medium conflict */}
           <p className="px-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
             Core Modules
           </p>
@@ -114,50 +112,67 @@ export default function MobileSidebar() {
           <NavItem
             icon={<Users className="size-5" />}
             label="Admin & Access"
-            link={"/accessmanagement"}
+            link={"accessmanagement"}
           />
           <NavItem
             icon={<Boxes className="size-5" />}
             label="Supply Management"
-            link={"/suppliermanagement"}
+            link={"suppliermanagement"}
           />
           <NavItem
             icon={<QrCode className="size-5" />}
             label="Bin Management"
-            link={"/binmanagement"}
+            link={"binmanagement"}
+          />
+          <NavItem
+            icon={<Archive className="size-5" />}
+            label="Bins Archived"
+            link={"binsarchived"}
           />
           <NavItem
             icon={<FolderKanban className="size-5" />}
             label="Inbound"
-            link={"/inboundmanagement"}
+            link={"inboundmanagement"}
           />
           <NavItem
             icon={<HandCoins className="size-5" />}
             label="Inventory"
-            link={"/inventorymanagement"}
+            link={"inventorymanagement"}
           />
           <NavItem
             icon={<FileCheck className="size-5" />}
             label="Outbound"
-            link={"/outboundmanagement"}
+            link={"outboundmanagement"}
+          />
+          <NavItem
+            icon={<Settings className="size-5" />}
+            label="Account Settings"
+            link={"profilesettings"}
           />
         </nav>
 
         {/* User Profile */}
         <div className="p-4 border-t border-white/10">
           <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-pointer group">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-400 to-blue-600 border border-white/20"></div>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-400 to-blue-600 border border-white/20 flex items-center justify-center text-white text-xs font-bold">
+              {user?.firstName?.charAt(0) || "U"}
+            </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-white group-hover:text-[#FFD700] transition-colors">
-                Jara Joaquin
+                {user?.firstName} {user?.lastName}
               </span>
               <span className="text-[10px] text-[#FFD700] uppercase tracking-wide opacity-80">
-                Super Admin
+                {user?.roles?.[0] || "Branch Manager"}
               </span>
             </div>
-            {/* Removed <i> and fa-solid wrapper */}
-            <ChevronRight className="size-4 text-slate-500 ml-auto group-hover:text-white transition-colors" />
           </div>
+          <button
+            onClick={logout}
+            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
+          >
+            <LogOut className="size-4" />
+            Sign Out
+          </button>
         </div>
       </aside>
     </>
