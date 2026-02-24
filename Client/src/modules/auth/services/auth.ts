@@ -24,7 +24,7 @@ export const loginUser = async (
 ): Promise<LoginResponse> => {
   // Pass the LoginResponse type to axios.post so 'data' is typed correctly
   const { data } = await apiClient.post<LoginResponse>(
-    "/Auth/login",
+    "api/Auth/login",
     credentials,
   );
   return data;

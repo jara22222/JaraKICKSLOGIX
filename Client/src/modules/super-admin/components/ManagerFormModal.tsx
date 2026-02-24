@@ -1,6 +1,9 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import { useMutation } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createManagerAccount } from "../services/postmanager";
 
 export default function ManagerFormModal() {
   const {
@@ -11,14 +14,33 @@ export default function ManagerFormModal() {
     updateManager,
   } = useSuperAdminStore();
 
+  //State
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [address, setAddress] = useState("");
   const [email, setEmail] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [status, setStatus] = useState("Active");
 
   const isEditMode = !!editingManager;
+
+  // --- NEW: Registration Mutation ---
+  const registerMutation = useMutation({
+    mutationFn: createManagerAccount,
+    onSuccess: (data) => {
+      // 1. Store token
+      localStorage.setItem("token", data.token);
+      // 2. Store user info (optional, or use a state manager)
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      console.log("Manager created Successful:", data.user.userName);
+    },
+    onError: (error: AxiosError<any>) => {
+      // Now TypeScript knows 'error.response' exists
+      console.log(error.response?.data);
+    },
+  });
 
   // Populate form when editing
   useEffect(() => {
@@ -59,9 +81,18 @@ export default function ManagerFormModal() {
         branch: selectedBranch,
         status,
       });
+      handleClose();
+    } else {
+      // --- NEW: Trigger the Register Mutation ---
+      registerMutation.mutate({
+        firstName,
+        middleName: middleName || null, // Ensure empty string becomes null
+        lastName,
+        email,
+        branch: selectedBranch,
+        address, // API requires this field
+      });
     }
-    // In a real app, create logic would also go here
-    handleClose();
   };
 
   if (!isManagerModalOpen) return null;
@@ -113,14 +144,14 @@ export default function ManagerFormModal() {
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
-                Middle Name
+                Middle Initial
               </label>
               <input
                 type="text"
                 value={middleName}
                 onChange={(e) => setMiddleName(e.target.value)}
                 className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
-                placeholder="e.g. Santos"
+                placeholder="e.g. T"  
               />
             </div>
             <div>
@@ -148,6 +179,19 @@ export default function ManagerFormModal() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
               placeholder="e.g. juan.delacruz@kickslogix.com"
+            />
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+              Address
+            </label>
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
+              placeholder="e.g. Juan Luna st. Davao City"
             />
           </div>
           {/* Status — only show in edit mode */}
@@ -231,9 +275,14 @@ export default function ManagerFormModal() {
           </button>
           <button
             onClick={handleSubmit}
+            disabled={registerMutation.isPending}
             className="px-6 py-2 bg-[#001F3F] text-white text-xs font-bold uppercase rounded-lg hover:bg-[#00162e] shadow-md shadow-blue-900/10 transition-all hover:-translate-y-0.5"
           >
-            {isEditMode ? "Save Changes" : "Register Manager"}
+            {registerMutation.isPending
+              ? "Processing..."
+              : isEditMode
+                ? "Save Changes"
+                : "Register Manager"}
           </button>
         </div>
       </div>

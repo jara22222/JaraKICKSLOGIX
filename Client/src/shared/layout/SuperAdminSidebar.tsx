@@ -24,9 +24,12 @@ const NavItem = ({
   link: string;
 }) => {
   const location = useLocation();
+
+  // FIX: Clean up slashes to prevent // duplicates
+  const cleanLink = link.startsWith("/") ? link.substring(1) : link;
   const absolutePath = link.startsWith("/superadmin")
     ? link
-    : `/superadmin/${link}`.replace(/\/$/, "");
+    : `/superadmin/${cleanLink}`.replace(/\/$/, "");
 
   const isActive = location.pathname === absolutePath;
 
