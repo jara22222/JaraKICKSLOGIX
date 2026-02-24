@@ -110,7 +110,7 @@ using (var scope = app.Services.CreateScope())
 }
 app.UseRouting();
 app.UseCors("MyAllowSpecificOrigins");
-app.UseHttpsRedirection(); // The broken duplicate was removed above this
+app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
