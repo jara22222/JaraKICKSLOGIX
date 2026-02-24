@@ -1,4 +1,4 @@
-import apiClient from "@/api/apiClient";
+import apiClient from "@/services/apiClient";
 //added new client
 export interface User {
   id: string;
