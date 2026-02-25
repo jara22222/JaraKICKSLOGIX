@@ -45,7 +45,7 @@ export default function LoginForm() {
     mutation.mutate(form);
   };
   const getFieldError = (fieldName: "UserName" | "Password") => {
-    return mutation.error?.response?.data?.errors?.[fieldName]?.[0];
+    return (mutation.error as any)?.response?.data?.errors?.[fieldName]?.[0];
   };
   return (
     <>
@@ -110,12 +110,13 @@ export default function LoginForm() {
             >
               {mutation.isPending ? "Signing in..." : "Sign In to Portal"}
             </Button>
-            {mutation.isError && !mutation.error.response?.data?.errors && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm text-center">
-                {mutation.error.response?.data?.title ||
-                  "Login failed. Please check your credentials."}
-              </div>
-            )}
+            {mutation.isError &&
+              (!mutation.error as any).response?.data?.errors && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm text-center">
+                  {(mutation.error as any).response?.data?.title ||
+                    "Login failed. Please check your credentials."}
+                </div>
+              )}
           </div>
           {/* Divider */}
           <div className="relative flex items-center justify-center my-4">
