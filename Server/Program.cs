@@ -47,20 +47,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpContextAccessor();
 
-var connectionString = builder.Environment.IsDevelopment() 
-    ? builder.Configuration.GetConnectionString("DefaultConnection") // LocalDB
-    : Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
-      ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"); // Render-friendly fallback
-
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new InvalidOperationException(
-        "Database connection string is missing. Set DefaultConnection (development) or DB_CONNECTION_STRING (production)."
-    );
-}
-
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddIdentity<Users, IdentityRole>(options => {
     options.Password.RequireDigit = true;
