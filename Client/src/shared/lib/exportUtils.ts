@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
+import QRCode from "qrcode";
 
 // ─── CSV EXPORT ──────────────────────────────────
 export function exportToCSV(
@@ -33,9 +34,9 @@ export function exportToCSV(
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast.success("CSV export completed.");
+    showSuccessToast("CSV export completed.");
   } catch {
-    toast.error("Failed to export CSV.");
+    showErrorToast("Failed to export CSV.");
   }
 }
 
@@ -135,9 +136,88 @@ export function exportToPDF(
     });
 
     doc.save(`${filename}_${formatDateForFile()}.pdf`);
-    toast.success("PDF export completed.");
+    showSuccessToast("PDF export completed.");
   } catch {
-    toast.error("Failed to export PDF.");
+    showErrorToast("Failed to export PDF.");
+  }
+}
+
+export async function exportBinQRCodesToPDF(
+  filename: string,
+  bins: Array<{
+    binId: string;
+    binLocation: string;
+    binSize: string;
+    qrCodeString: string;
+  }>,
+) {
+  try {
+    if (!bins.length) {
+      showErrorToast("No bin QR codes found to export.");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    let cursorX = 12;
+    let cursorY = 20;
+    const cardWidth = 58;
+    const cardHeight = 82;
+    const qrSize = 40;
+    const gapX = 8;
+    const gapY = 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("KICKSLOGIX BIN QR SHEET", 12, 12);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Generated: ${formatDateTime()}`, pageWidth - 12, 12, {
+      align: "right",
+    });
+
+    for (let index = 0; index < bins.length; index++) {
+      const bin = bins[index];
+      const qrImage = await QRCode.toDataURL(bin.qrCodeString, { width: 260, margin: 1 });
+
+      doc.setDrawColor(220, 220, 220);
+      doc.roundedRect(cursorX, cursorY, cardWidth, cardHeight, 2, 2);
+      doc.addImage(qrImage, "PNG", cursorX + 9, cursorY + 8, qrSize, qrSize);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(bin.binLocation, cursorX + cardWidth / 2, cursorY + 56, {
+        align: "center",
+      });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.text(`${bin.binSize} • ${bin.binId}`, cursorX + cardWidth / 2, cursorY + 61, {
+        align: "center",
+      });
+      doc.text(bin.qrCodeString, cursorX + cardWidth / 2, cursorY + 67, {
+        align: "center",
+        maxWidth: cardWidth - 6,
+      });
+
+      cursorX += cardWidth + gapX;
+      if (cursorX + cardWidth > pageWidth) {
+        cursorX = 12;
+        cursorY += cardHeight + gapY;
+      }
+
+      if (cursorY + cardHeight > pageHeight && index < bins.length - 1) {
+        doc.addPage();
+        cursorX = 12;
+        cursorY = 20;
+      }
+    }
+
+    doc.save(`${filename}_${formatDateForFile()}.pdf`);
+    showSuccessToast("Bin QR PDF exported successfully.");
+  } catch {
+    showErrorToast("Failed to export bin QR PDF.");
   }
 }
 

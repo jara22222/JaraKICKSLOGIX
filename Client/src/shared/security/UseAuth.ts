@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { showSuccessToast } from "@/shared/lib/toast";
 
 //Done resolving
 export const UseAuth = () => {
@@ -32,7 +32,7 @@ export const UseAuth = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
-    toast.success("You have been logged out.");
+    showSuccessToast("You have been logged out.");
 
     // 2. Redirect to login
     // Using 'replace' prevents them from clicking 'back' to a protected page

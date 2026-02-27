@@ -5,8 +5,8 @@ import {
   LogLevel,
 } from "@microsoft/signalr";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { getHubUrl } from "@/shared/config/api";
+import { showErrorToast } from "@/shared/lib/toast";
 
 export const useManagerRealtime = () => {
   const queryClient = useQueryClient();
@@ -26,7 +26,6 @@ export const useManagerRealtime = () => {
 
     connection.on("ReceiveNewBranchManager", () => {
       queryClient.invalidateQueries({ queryKey: ["superadmin-managers"] });
-      toast.info("Manager list updated in real time.");
     });
 
     const startConnection = async () => {
@@ -41,7 +40,7 @@ export const useManagerRealtime = () => {
         // React StrictMode may stop a dev connection during setup.
         if (message.includes("stopped during negotiation")) return;
 
-        toast.error("Realtime connection failed for managers.");
+        showErrorToast("Realtime connection failed for managers.");
       }
     };
 

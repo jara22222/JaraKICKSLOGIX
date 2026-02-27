@@ -7,6 +7,7 @@ export type IncomingShipment = {
   supplier: string;
   product: string;
   sku: string;
+  size: "S" | "M" | "L" | "XL" | "XXL";
   qty: number;
   dateSent: string;
   eta: string;
@@ -75,6 +76,7 @@ export const useInboundStore = create<InboundState>((set) => ({
       supplier: "Nike Global",
       product: "Air Jordan 1 Retro High OG",
       sku: "NK-AJ1-RET-001",
+      size: "L",
       qty: 300,
       dateSent: "Feb 12, 2026",
       eta: "Feb 15, 2026",
@@ -86,6 +88,7 @@ export const useInboundStore = create<InboundState>((set) => ({
       supplier: "Adidas Originals",
       product: "Adidas Samba OG",
       sku: "AD-SAMBA-OG-44",
+      size: "M",
       qty: 150,
       dateSent: "Feb 11, 2026",
       eta: "Feb 14, 2026",
@@ -97,6 +100,7 @@ export const useInboundStore = create<InboundState>((set) => ({
       supplier: "New Balance Inc.",
       product: "New Balance 550",
       sku: "NB-550-WHT-09",
+      size: "S",
       qty: 200,
       dateSent: "Feb 13, 2026",
       eta: "Feb 17, 2026",
@@ -108,6 +112,7 @@ export const useInboundStore = create<InboundState>((set) => ({
       supplier: "Puma Logistics",
       product: "Puma Suede Classic XXI",
       sku: "PM-SC-XXI-BLK",
+      size: "XL",
       qty: 120,
       dateSent: "Feb 14, 2026",
       eta: "Feb 18, 2026",
@@ -119,6 +124,7 @@ export const useInboundStore = create<InboundState>((set) => ({
       supplier: "Nike Global",
       product: "Nike Dunk Low Panda",
       sku: "NK-DUNK-PND-10",
+      size: "M",
       qty: 500,
       dateSent: "Feb 10, 2026",
       eta: "Feb 14, 2026",

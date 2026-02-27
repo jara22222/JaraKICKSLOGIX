@@ -1,6 +1,6 @@
 import axios from "axios";
-import { toast } from "sonner";
 import { API_BASE_URL } from "@/shared/config/api";
+import { showErrorToast } from "@/shared/lib/toast";
 
 const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/`,
@@ -23,20 +23,34 @@ apiClient.interceptors.response.use(
   (error) => {
     const responseData = error?.response?.data;
     const validationErrors = responseData?.errors;
+    const identityErrors = Array.isArray(responseData)
+      ? responseData
+      : Array.isArray(responseData?.errors)
+        ? responseData.errors
+        : null;
 
     const firstValidationError =
       validationErrors && typeof validationErrors === "object"
         ? Object.values(validationErrors).flat().find((msg) => Boolean(msg))
         : null;
 
+    const firstIdentityError =
+      identityErrors?.find(
+        (entry: any) => entry?.description || entry?.Description,
+      )?.description ??
+      identityErrors?.find(
+        (entry: any) => entry?.description || entry?.Description,
+      )?.Description;
+
     const message =
+      firstIdentityError ||
       firstValidationError ||
       responseData?.title ||
       responseData?.message ||
       error?.message ||
       "Request failed. Please try again.";
 
-    toast.error(String(message));
+    showErrorToast(String(message));
     return Promise.reject(error);
   }
 );

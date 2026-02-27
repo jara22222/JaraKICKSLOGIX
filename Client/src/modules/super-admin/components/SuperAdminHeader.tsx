@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, ShieldCheck } from "lucide-react";
+import { Bell, CheckCheck, ChevronRight, Circle, ShieldCheck, Trash2 } from "lucide-react";
 import SuperAdminMobileSidebar from "@/shared/layout/SuperAdminMobileSidebar";
 import { Link, useLocation } from "react-router-dom";
 import { HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/signalr";
@@ -15,6 +15,17 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   auditlogs: "Audit Logs",
 };
 
+type NotificationItem = {
+  id: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+};
+
+type NotificationFilter = "all" | "unread" | "read";
+
+const MAX_NOTIFICATIONS = 100;
+
 export default function SuperAdminHeader({
   title,
   label,
@@ -26,14 +37,48 @@ export default function SuperAdminHeader({
   const segments = location.pathname.split("/").filter(Boolean);
   const menuRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<
-    { id: string; message: string; createdAt: string; read: boolean }[]
-  >([]);
+  const [filter, setFilter] = useState<NotificationFilter>("all");
+  const notificationStorageKey = useMemo(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") ?? "{}");
+      const userId = user?.id || user?.userId || user?.userName || "default";
+      return `kickslogix-notifications:${String(userId)}`;
+    } catch {
+      return "kickslogix-notifications:default";
+    }
+  }, []);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+    try {
+      const raw = localStorage.getItem(notificationStorageKey);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(
+        (item) =>
+          item &&
+          typeof item.id === "string" &&
+          typeof item.message === "string" &&
+          typeof item.createdAt === "string" &&
+          typeof item.read === "boolean",
+      ) as NotificationItem[];
+    } catch {
+      return [];
+    }
+  });
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
     [notifications],
   );
+  const filteredNotifications = useMemo(() => {
+    if (filter === "unread") return notifications.filter((notification) => !notification.read);
+    if (filter === "read") return notifications.filter((notification) => notification.read);
+    return notifications;
+  }, [notifications, filter]);
+
+  useEffect(() => {
+    localStorage.setItem(notificationStorageKey, JSON.stringify(notifications));
+  }, [notificationStorageKey, notifications]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -51,15 +96,18 @@ export default function SuperAdminHeader({
     let isDisposed = false;
 
     const addNotification = (message: string) => {
-      setNotifications((prev) => [
-        {
-          id: crypto.randomUUID(),
-          message,
-          createdAt: new Date().toISOString(),
-          read: false,
-        },
-        ...prev,
-      ]);
+      setNotifications((prev) => {
+        const next = [
+          {
+            id: crypto.randomUUID(),
+            message,
+            createdAt: new Date().toISOString(),
+            read: false,
+          },
+          ...prev,
+        ];
+        return next.slice(0, MAX_NOTIFICATIONS);
+      });
     };
 
     const createConnection = (hubPath: string) =>
@@ -86,12 +134,6 @@ export default function SuperAdminHeader({
     supplierConnection.on("SupplierArchived", (payload: any) => {
       addNotification(`Supplier archived: ${payload?.companyName ?? "Unknown"}`);
     });
-    supplierConnection.on("ReceiveNewBranchManager", (payload: any) => {
-      addNotification(
-        `New manager added (${payload?.branch ?? "N/A"}): ${payload?.userName ?? "Unknown"}`,
-      );
-    });
-
     managerConnection.on("ManagerCreated", (payload: any) => {
       addNotification(
         `Manager created (${payload?.branch ?? "N/A"}): ${payload?.userName ?? "Unknown"}`,
@@ -134,7 +176,6 @@ export default function SuperAdminHeader({
       supplierConnection.off("SupplierCreated");
       supplierConnection.off("SupplierUpdated");
       supplierConnection.off("SupplierArchived");
-      supplierConnection.off("ReceiveNewBranchManager");
       managerConnection.off("ManagerCreated");
       updateManagerConnection.off("ManagerUpdated");
       archiveManagerConnection.off("ManagerArchived");
@@ -161,11 +202,22 @@ export default function SuperAdminHeader({
 
   const handleToggleNotifications = () => {
     setIsOpen((prev) => !prev);
-    if (!isOpen) {
-      setNotifications((prev) =>
-        prev.map((notification) => ({ ...notification, read: true })),
-      );
-    }
+  };
+
+  const toggleNotificationRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === id ? { ...notification, read: !notification.read } : notification,
+      ),
+    );
+  };
+
+  const removeNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
+  };
+
+  const markAllRead = () => {
+    setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })));
   };
 
   return (
@@ -205,23 +257,96 @@ export default function SuperAdminHeader({
         <div className="hidden sm:flex items-center gap-3 relative" ref={menuRef}>
           {isOpen && (
             <div className="absolute right-0 top-10 w-80 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
-              <div className="p-3 border-b border-slate-100">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Notifications
-                </p>
+              <div className="p-3 border-b border-slate-100 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Notifications
+                  </p>
+                  <button
+                    type="button"
+                    onClick={markAllRead}
+                    className="text-[10px] font-bold text-[#001F3F] hover:underline disabled:text-slate-300 disabled:no-underline"
+                    disabled={unreadCount === 0}
+                  >
+                    Mark all read
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFilter("all")}
+                    className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                      filter === "all"
+                        ? "bg-slate-100 text-[#001F3F]"
+                        : "text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilter("unread")}
+                    className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                      filter === "unread"
+                        ? "bg-blue-100 text-[#001F3F]"
+                        : "text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    Unread
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilter("read")}
+                    className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                      filter === "read"
+                        ? "bg-emerald-100 text-[#001F3F]"
+                        : "text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    Read
+                  </button>
+                </div>
               </div>
               <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
-                {notifications.length === 0 ? (
+                {filteredNotifications.length === 0 ? (
                   <div className="p-4 text-xs text-slate-400">
-                    No notifications yet.
+                    No {filter === "all" ? "" : filter} notifications.
                   </div>
                 ) : (
-                  notifications.slice(0, 20).map((notification) => (
+                  filteredNotifications.slice(0, 20).map((notification) => (
                     <div key={notification.id} className="p-3 hover:bg-slate-50">
-                      <p className="text-xs text-slate-700">{notification.message}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        {formatNotificationTime(notification.createdAt)}
-                      </p>
+                      <div className="flex items-start gap-2">
+                        <Circle
+                          className={`size-2 mt-1.5 ${
+                            notification.read ? "text-slate-300" : "text-blue-500 fill-blue-500"
+                          }`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-slate-700">{notification.message}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            {formatNotificationTime(notification.createdAt)} •{" "}
+                            {notification.read ? "Read" : "Unread"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleNotificationRead(notification.id)}
+                          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold text-[#001F3F] hover:bg-slate-100"
+                        >
+                          <CheckCheck className="size-3" />
+                          {notification.read ? "Mark unread" : "Mark read"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeNotification(notification.id)}
+                          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="size-3" />
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}

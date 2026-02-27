@@ -11,7 +11,16 @@ namespace Server.Data.Seeders
             var userManager = serviceProvider.GetRequiredService<UserManager<Users>>();
 
             // 1. Seed Roles
-            string[] roles = { "SuperAdmin", "BranchManager", "InboundCoordinator", "OutboundCoordinator", "VASPersonnel","Supplier" };
+            string[] roles =
+            {
+                "SuperAdmin",
+                "BranchManager",
+                "Receiver",
+                "PutAway",
+                "DispatchClerk",
+                "VASPersonnel",
+                "Supplier"
+            };
 
             foreach (var role in roles)
             {

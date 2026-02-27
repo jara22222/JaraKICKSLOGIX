@@ -2,10 +2,10 @@ import HeaderCell from "@/shared/components/HeaderCell";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import Pagination from "@/shared/components/Pagination";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
+import { showSuccessToast } from "@/shared/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { restoreManagerAccount } from "../services/restoremanager";
 
 type ArchivedManagerItem = {
@@ -37,7 +37,7 @@ export default function ArchivedUsersTable({
   const restoreMutation = useMutation({
     mutationFn: restoreManagerAccount,
     onSuccess: (data) => {
-      toast.success(data.message || "Manager restored successfully.");
+      showSuccessToast(data.message || "Manager restored successfully.");
       queryClient.invalidateQueries({ queryKey: ["superadmin-archived-managers"] });
       queryClient.invalidateQueries({ queryKey: ["superadmin-managers"] });
     },

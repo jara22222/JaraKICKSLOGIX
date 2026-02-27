@@ -13,6 +13,7 @@ namespace Server.DTO.BranchAccountDto
         [StringLength(50)]
         public string Address { get; set; } = string.Empty;
         [StringLength(256)]
+        [Required]
         public string RoleName { get; set; } = string.Empty;
         [EmailAddress]
         [Required]

@@ -1,8 +1,8 @@
 import AcessControllHeader from "@/shared/layout/Header";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 
 export default function ProfileSettings() {
   const userJson = localStorage.getItem("user");
@@ -35,7 +35,7 @@ export default function ProfileSettings() {
   const handleSave = () => {
     const existingUserJson = localStorage.getItem("user");
     if (!existingUserJson) {
-      toast.error("No active user profile found.");
+      showErrorToast("No active user profile found.");
       return;
     }
 
@@ -49,9 +49,9 @@ export default function ProfileSettings() {
       };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       window.dispatchEvent(new Event("auth-user-updated"));
-      toast.success("Profile updated successfully.");
+      showSuccessToast("Profile updated successfully.");
     } catch {
-      toast.error("Failed to save profile.");
+      showErrorToast("Failed to save profile.");
     }
   };
 

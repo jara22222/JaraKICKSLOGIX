@@ -1,8 +1,8 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { createManagerAccount } from "../services/postmanager";
 import { updateManagerAccount } from "../services/updatemanager";
 
@@ -29,7 +29,7 @@ export default function ManagerFormModal() {
   const registerMutation = useMutation({
     mutationFn: createManagerAccount,
     onSuccess: (data) => {
-      toast.success(data.message || "Manager account created successfully.");
+      showSuccessToast(data.message || "Manager account created successfully.");
       queryClient.invalidateQueries({ queryKey: ["superadmin-managers"] });
       handleClose();
     },
@@ -52,7 +52,7 @@ export default function ManagerFormModal() {
       };
     }) => updateManagerAccount(managerId, payload),
     onSuccess: (data) => {
-      toast.success(data.message || "Manager account updated successfully.");
+      showSuccessToast(data.message || "Manager account updated successfully.");
       queryClient.invalidateQueries({ queryKey: ["superadmin-managers"] });
       handleClose();
     },
@@ -90,7 +90,7 @@ export default function ManagerFormModal() {
   const handleSubmit = () => {
     if (isEditMode && editingManager) {
       if (!editingManager.userId || editingManager.userId.startsWith("seed-")) {
-        toast.error("Manager ID is missing. Please refresh the page.");
+        showErrorToast("Manager ID is missing. Please refresh the page.");
         return;
       }
 

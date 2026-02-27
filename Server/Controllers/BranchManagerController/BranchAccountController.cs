@@ -14,6 +14,14 @@ namespace Server.Controllers
     [ApiController]
     public class BranchAccountController:ControllerBase
     {
+        private static readonly HashSet<string> AllowedBranchRoles =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                "Receiver",
+                "PutAway",
+                "VASPersonnel"
+            };
+
         private readonly UserManager<Users> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IHubContext<BranchAccountHub> _hubContext;    
@@ -33,6 +41,7 @@ namespace Server.Controllers
     
         [Authorize(Roles = "BranchManager")]
         [HttpPost("registe-branchAccount")]
+        [HttpPost("create-employee")]
         public async Task<IActionResult> PostAsync([FromBody] BranchAccountDto branchAccountDto)
         {
             try
@@ -64,12 +73,21 @@ namespace Server.Controllers
                     EmailConfirmed = true
                 };
 
+                var requestedRole = branchAccountDto.RoleName?.Trim() ?? string.Empty;
+                if (!AllowedBranchRoles.Contains(requestedRole))
+                {
+                    return BadRequest(new
+                    {
+                        message = "Invalid role. Allowed roles are Receiver, PutAway, and VASPersonnel."
+                    });
+                }
+
                 var result = await _userManager.CreateAsync(newManagerUser,"KicksLogix@2026");
 
 
                 if(result.Succeeded)
                 {
-                    string roleName = branchAccountDto.RoleName?? "N/A";
+                    string roleName = requestedRole;
 
                     if(!await _roleManager.RoleExistsAsync(roleName))
                     {
@@ -83,7 +101,8 @@ namespace Server.Controllers
                         UserName =accountName,
                         Email = branchAccountDto.Email,
                         IsActive = "Active",
-                        Message =  "A new branch manager has joined!"
+                        Role = roleName,
+                        Message =  "A new branch employee has joined!"
                     });
 
                     
@@ -95,7 +114,7 @@ namespace Server.Controllers
                     Action = "Create",
                     Branch = branchName,
                     PerformedBy = currentUserName,
-                    Description =$"{currentUserName} created branch user: {accountName}", // e.g., "Created supplier: Supplier1"
+                    Description =$"{currentUserName} created branch employee ({roleName}): {accountName}",
                     DatePerformed = DateTime.UtcNow
                 };
 

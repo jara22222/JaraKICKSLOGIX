@@ -50,6 +50,7 @@ import VASActivityLog from "./modules/vas/pages/VASActivityLog";
 import LandingPage from "./modules/landing/pages/LandingPage";
 
 import NotFound from "./shared/pages/NotFound";
+import Unauthorized from "./shared/pages/Unauthorized";
 //BinLocation
 import BinLocation from "./modules/binlocation/pages/BinLocation";
 import ProtectedRoute from "./shared/security/ProtectedRoute";
@@ -108,127 +109,147 @@ export const router = createBrowserRouter([
 
   // ─── INBOUND COORDINATOR ─────────────────────
   {
-    path: "/inbound",
-    element: <InboundLayout />,
+    element: <ProtectedRoute allowedRoles={["Receiver", "PutAway"]} />,
     children: [
       {
-        index: true,
-        element: <InboundDashboard />,
-      },
-      {
-        path: "incoming",
-        element: <IncomingShipments />,
-      },
-      {
-        path: "receivinglog",
-        element: <ReceivingLog />,
-      },
-      {
-        path: "activity",
-        element: <InboundActivity />,
-      },
-      {
-        path: "putaway",
-        element: <PutAwayLabels />,
+        path: "/inbound",
+        element: <InboundLayout />,
+        children: [
+          {
+            index: true,
+            element: <InboundDashboard />,
+          },
+          {
+            path: "incoming",
+            element: <IncomingShipments />,
+          },
+          {
+            path: "receivinglog",
+            element: <ReceivingLog />,
+          },
+          {
+            path: "activity",
+            element: <InboundActivity />,
+          },
+          {
+            path: "putaway",
+            element: <PutAwayLabels />,
+          },
+        ],
       },
     ],
   },
 
   // ─── OUTBOUND COORDINATOR (Mobile-First) ───────
   {
-    path: "/outbound",
-    element: <OutboundLayout />,
+    element: <ProtectedRoute allowedRoles={["DispatchClerk"]} />,
     children: [
       {
-        index: true,
-        element: <OutboundDashboard />,
-      },
-      {
-        path: "reassign",
-        element: <BinReassignment />,
-      },
-      {
-        path: "picklist",
-        element: <PickList />,
-      },
-      {
-        path: "activity",
-        element: <OutboundActivityLog />,
+        path: "/outbound",
+        element: <OutboundLayout />,
+        children: [
+          {
+            index: true,
+            element: <OutboundDashboard />,
+          },
+          {
+            path: "reassign",
+            element: <BinReassignment />,
+          },
+          {
+            path: "picklist",
+            element: <PickList />,
+          },
+          {
+            path: "activity",
+            element: <OutboundActivityLog />,
+          },
+        ],
       },
     ],
   },
 
   // ─── VAS PERSONNEL (Mobile-First) ──────────────
   {
-    path: "/vas",
-    element: <VASLayout />,
+    element: <ProtectedRoute allowedRoles={["VASPersonnel"]} />,
     children: [
       {
-        index: true,
-        element: <VASDashboard />,
-      },
-      {
-        path: "incoming",
-        element: <VASIncoming />,
-      },
-      {
-        path: "processing",
-        element: <VASProcessing />,
-      },
-      {
-        path: "activity",
-        element: <VASActivityLog />,
+        path: "/vas",
+        element: <VASLayout />,
+        children: [
+          {
+            index: true,
+            element: <VASDashboard />,
+          },
+          {
+            path: "incoming",
+            element: <VASIncoming />,
+          },
+          {
+            path: "processing",
+            element: <VASProcessing />,
+          },
+          {
+            path: "activity",
+            element: <VASActivityLog />,
+          },
+        ],
       },
     ],
   },
 
   // ─── ADMIN / MANAGER ───────────────────────────
   {
-    path: "/accesscontroll",
-    element: <AccessControlRootLayout />,
+    element: <ProtectedRoute allowedRoles={["BranchManager"]} />,
     children: [
       {
-        index: true,
-        path: "",
-        element: <Overview />,
-      },
-      {
-        path: "accessmanagement",
-        element: <AdminAccessControl />,
-      },
-      {
-        path: "suppliermanagement",
-        element: <SupplierManagement />,
-      },
-      {
-        path: "binmanagement",
-        element: <BinLocationManagement />,
-      },
-      {
-        path: "binsarchived",
-        element: <BinsArchived />,
-      },
-      {
-        path: "inboundmanagement",
-        element: <InboundManagement />,
-      },
-      {
-        path: "outboundmanagement",
-        element: <OutboundManagement />,
-      },
-      {
-        path: "inventorymanagement",
-        element: <InventoryManagement />,
-      },
-      {
-        path: "profilesettings",
-        element: <ProfileSettings />,
+        path: "/accesscontroll",
+        element: <AccessControlRootLayout />,
+        children: [
+          {
+            index: true,
+            path: "",
+            element: <Overview />,
+          },
+          {
+            path: "accessmanagement",
+            element: <AdminAccessControl />,
+          },
+          {
+            path: "suppliermanagement",
+            element: <SupplierManagement />,
+          },
+          {
+            path: "binmanagement",
+            element: <BinLocationManagement />,
+          },
+          {
+            path: "binsarchived",
+            element: <BinsArchived />,
+          },
+          {
+            path: "inboundmanagement",
+            element: <InboundManagement />,
+          },
+          {
+            path: "outboundmanagement",
+            element: <OutboundManagement />,
+          },
+          {
+            path: "inventorymanagement",
+            element: <InventoryManagement />,
+          },
+          {
+            path: "profilesettings",
+            element: <ProfileSettings />,
+          },
+        ],
       },
     ],
   },
 
   {
-    element: <ProtectedRoute allowedRoles={["OutboundCoordinator"]} />,
+    element: <ProtectedRoute allowedRoles={["PutAway", "DispatchClerk"]} />,
     children: [
       {
         path: "binlocation/product/:id",
@@ -238,6 +259,11 @@ export const router = createBrowserRouter([
   },
 
   // ─── 404 CATCH-ALL ─────────────────────────────
+  {
+    path: "/unauthorized",
+    element: <Unauthorized />,
+  },
+
   {
     path: "*",
     element: <NotFound />,

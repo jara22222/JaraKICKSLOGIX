@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { toast } from "sonner";
+import { showSuccessToast } from "@/shared/lib/toast";
 
 // --- TYPES ---
 export type Branch = {
@@ -105,7 +105,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
     set((state) => {
       const existingManager = state.managers.find((m) => m.id === id);
       if (existingManager) {
-        toast.success(
+        showSuccessToast(
           `Manager updated: ${existingManager.firstName} ${existingManager.lastName}.`
         );
       }
@@ -120,7 +120,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
     set((state) => {
       const existingManager = state.managers.find((m) => m.id === id);
       if (existingManager) {
-        toast.success(
+        showSuccessToast(
           `Manager archived: ${existingManager.firstName} ${existingManager.lastName}.`
         );
       }
@@ -157,7 +157,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
     set((state) => {
       const existingSupplier = state.suppliers.find((s) => s.id === id);
       if (existingSupplier) {
-        toast.success(`Supplier updated: ${existingSupplier.companyName}.`);
+        showSuccessToast(`Supplier updated: ${existingSupplier.companyName}.`);
       }
 
       return {
@@ -170,7 +170,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set) => ({
     set((state) => {
       const existingSupplier = state.suppliers.find((s) => s.id === id);
       if (existingSupplier) {
-        toast.success(`Supplier archived: ${existingSupplier.companyName}.`);
+        showSuccessToast(`Supplier archived: ${existingSupplier.companyName}.`);
       }
 
       return {

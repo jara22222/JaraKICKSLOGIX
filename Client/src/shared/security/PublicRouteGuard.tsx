@@ -3,8 +3,8 @@ import { Navigate, Outlet } from "react-router-dom";
 const getRedirectPathByRoles = (roles?: string[]) => {
   if (roles?.includes("SuperAdmin")) return "/superadmin";
   if (roles?.includes("BranchManager")) return "/accesscontroll";
-  if (roles?.includes("InboundCoordinator")) return "/inbound";
-  if (roles?.includes("OutboundCoordinator")) return "/outbound";
+  if (roles?.includes("Receiver") || roles?.includes("PutAway")) return "/inbound";
+  if (roles?.includes("DispatchClerk")) return "/outbound";
   if (roles?.includes("VASPersonnel")) return "/vas";
   return null;
 };

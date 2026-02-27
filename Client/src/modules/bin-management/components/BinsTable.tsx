@@ -12,6 +12,7 @@ import Pagination from "@/shared/components/Pagination";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import ConfirmationModal from "@/shared/components/ConfirmationModal";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import { UseBinState } from "@/modules/bin-management/store/UseBinManagement";
 import {
   archiveBinLocation,
@@ -23,7 +24,6 @@ import {
 } from "@/modules/bin-management/services/binLocation";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import QRCode from "qrcode";
 
 const CSV_PDF_HEADERS = [
@@ -80,7 +80,7 @@ export default function BinsTable({
   const createMutation = useMutation({
     mutationFn: createBinLocation,
     onSuccess: (data) => {
-      toast.success(data.message || "Bin location created successfully.");
+      showSuccessToast(data.message || "Bin location created successfully.");
       queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
       setIsAddModalOpen();
       setNewBin({ binLocation: "", binSize: "M", binCapacity: 20 });
@@ -101,7 +101,7 @@ export default function BinsTable({
       };
     }) => updateBinLocation(id, payload),
     onSuccess: (data) => {
-      toast.success(data.message || "Bin location updated successfully.");
+      showSuccessToast(data.message || "Bin location updated successfully.");
       queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
       setEditTarget(null);
     },
@@ -110,7 +110,7 @@ export default function BinsTable({
   const archiveMutation = useMutation({
     mutationFn: archiveBinLocation,
     onSuccess: (data) => {
-      toast.success(data.message || "Bin location archived successfully.");
+      showSuccessToast(data.message || "Bin location archived successfully.");
       queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
       queryClient.invalidateQueries({ queryKey: ["branchmanager-archived-bins"] });
       setArchiveTarget(null);
@@ -150,7 +150,7 @@ export default function BinsTable({
       .then(setQrImageDataUrl)
       .catch(() => {
         setQrImageDataUrl("");
-        toast.error("Failed to generate QR code preview.");
+        showErrorToast("Failed to generate QR code preview.");
       });
   }, [qrModalData]);
 
@@ -189,7 +189,7 @@ export default function BinsTable({
   const handleCreateBin = (event: React.FormEvent) => {
     event.preventDefault();
     if (!newBin.binLocation.trim()) {
-      toast.error("Bin location is required.");
+      showErrorToast("Bin location is required.");
       return;
     }
 
@@ -203,7 +203,7 @@ export default function BinsTable({
   const handleSaveEdit = () => {
     if (!editTarget) return;
     if (!editLocation.trim()) {
-      toast.error("Bin location is required.");
+      showErrorToast("Bin location is required.");
       return;
     }
 

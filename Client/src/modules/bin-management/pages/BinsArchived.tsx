@@ -3,6 +3,7 @@ import HeaderCell from "@/shared/components/HeaderCell";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import Pagination from "@/shared/components/Pagination";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
+import { showSuccessToast } from "@/shared/lib/toast";
 import {
   getArchivedBinLocations,
   restoreBinLocation,
@@ -10,7 +11,6 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 
 const HEADERS = [
   "Bin ID",
@@ -35,7 +35,7 @@ export default function BinsArchived() {
   const restoreMutation = useMutation({
     mutationFn: restoreBinLocation,
     onSuccess: (data) => {
-      toast.success(data.message || "Bin restored successfully.");
+      showSuccessToast(data.message || "Bin restored successfully.");
       queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
       queryClient.invalidateQueries({ queryKey: ["branchmanager-archived-bins"] });
     },

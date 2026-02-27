@@ -90,7 +90,7 @@ namespace Server.Controllers
             }
         }
 
-        [Authorize(Roles = "OutboundCoordinator")]
+        [Authorize(Roles = "DispatchClerk,PutAway")]
         [HttpGet("public-bin/{id}")]
         public async Task<ActionResult<BinLocationListItemDto>> GetPublicByIdAsync(string id)
         {
@@ -161,8 +161,10 @@ namespace Server.Controllers
                     BinId = Guid.NewGuid().ToString(),
                     BinLocationCode = sanitizedLocation,
                     BinStatus = "Available",
+                    IsAvailable = true,
                     BinSize = sanitizedSize,
                     BinCapacity = dto.BinCapacity,
+                    OccupiedQty = 0,
                     QrCodeString = string.Empty,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -226,6 +228,7 @@ namespace Server.Controllers
                 bin.BinSize = sanitizedSize;
                 bin.BinCapacity = dto.BinCapacity;
                 bin.BinStatus = string.IsNullOrWhiteSpace(dto.BinStatus) ? "Available" : dto.BinStatus;
+                bin.IsAvailable = bin.BinStatus == "Available";
                 bin.QrCodeString = BuildQrCodeString(bin.BinId);
                 bin.UpdatedAt = DateTime.UtcNow;
 
@@ -270,6 +273,7 @@ namespace Server.Controllers
 
                 var location = bin.BinLocationCode;
                 bin.BinStatus = "Archived";
+                bin.IsAvailable = false;
                 bin.UpdatedAt = DateTime.UtcNow;
                 _context.AuditLogs.Add(new AuditLog
                 {
@@ -311,6 +315,7 @@ namespace Server.Controllers
                 }
 
                 bin.BinStatus = "Available";
+                bin.IsAvailable = true;
                 bin.UpdatedAt = DateTime.UtcNow;
 
                 _context.AuditLogs.Add(new AuditLog

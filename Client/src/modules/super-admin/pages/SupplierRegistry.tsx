@@ -3,10 +3,10 @@ import SupplierRegistrationTable from "@/modules/super-admin/components/Supplier
 import SupplierFormModal from "@/modules/super-admin/components/SupplierFormModal";
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
 import { archiveSupplierAccount, getSuppliers } from "../services/supplier";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 
 export default function SupplierRegistry() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,7 +49,7 @@ export default function SupplierRegistry() {
   const archiveMutation = useMutation({
     mutationFn: archiveSupplierAccount,
     onSuccess: (data) => {
-      toast.success(data.message || "Supplier archived successfully.");
+      showSuccessToast(data.message || "Supplier archived successfully.");
       void refetch();
     },
   });
@@ -73,7 +73,7 @@ export default function SupplierRegistry() {
 
   const handleArchiveSupplier = (supplier: (typeof suppliers)[number]) => {
     if (!supplier.userId || supplier.userId.startsWith("seed-")) {
-      toast.error("Supplier ID is missing. Please refresh the page.");
+      showErrorToast("Supplier ID is missing. Please refresh the page.");
       return;
     }
     archiveMutation.mutate(supplier.userId);
