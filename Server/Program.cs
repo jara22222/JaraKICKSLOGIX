@@ -49,7 +49,8 @@ builder.Services.AddHttpContextAccessor();
 
 var connectionString = builder.Environment.IsDevelopment() 
     ? builder.Configuration.GetConnectionString("DefaultConnection") // LocalDB
-    : Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"); // AWS RDS on Render
+    : Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+      ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"); // Render-friendly fallback
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
