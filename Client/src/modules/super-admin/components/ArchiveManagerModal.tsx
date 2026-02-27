@@ -1,7 +1,7 @@
 import { useSuperAdminStore } from "@/modules/super-admin/store/UseSuperAdminStore";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, AlertTriangle, X } from "lucide-react";
-import { toast } from "sonner";
 import { archiveManagerAccount } from "../services/archivemanager";
 
 export default function ArchiveManagerModal() {
@@ -12,7 +12,7 @@ export default function ArchiveManagerModal() {
   const archiveMutation = useMutation({
     mutationFn: archiveManagerAccount,
     onSuccess: (data) => {
-      toast.success(data.message || "Manager archived successfully.");
+      showSuccessToast(data.message || "Manager archived successfully.");
       queryClient.invalidateQueries({ queryKey: ["superadmin-managers"] });
       setArchiveConfirmManager(null);
     },
@@ -25,7 +25,7 @@ export default function ArchiveManagerModal() {
       !archiveConfirmManager.userId ||
       archiveConfirmManager.userId.startsWith("seed-")
     ) {
-      toast.error("Manager ID is missing. Please refresh the page.");
+      showErrorToast("Manager ID is missing. Please refresh the page.");
       return;
     }
 

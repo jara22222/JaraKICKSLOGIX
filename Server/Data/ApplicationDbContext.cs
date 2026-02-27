@@ -18,6 +18,9 @@ namespace Server.Data
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Products> Products { get; set; }
         public DbSet<BinLocation> BinLocations { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<StockMovement> StockMovements { get; set; }
+        public DbSet<BranchNotification> BranchNotifications { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             // Always call the base method first for Identity tables
@@ -32,6 +35,15 @@ namespace Server.Data
 
             builder.Entity<BinLocation>()
                 .HasKey(bin => bin.BinId);
+
+            builder.Entity<Order>()
+                .HasIndex(order => new { order.Branch, order.Status, order.CreatedAt });
+
+            builder.Entity<StockMovement>()
+                .HasIndex(movement => new { movement.Branch, movement.Action, movement.OccurredAt });
+
+            builder.Entity<BranchNotification>()
+                .HasIndex(notification => new { notification.Branch, notification.IsRead, notification.CreatedAt });
         }
 
 

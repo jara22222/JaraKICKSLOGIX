@@ -20,6 +20,8 @@ namespace Server.Models
         [Column("BinStatus")]
         [MaxLength(20)]
         public string BinStatus { get; set; } = "Available";
+        [Column("IsAvailable")]
+        public bool IsAvailable { get; set; } = true;
 
         [Required]
         [Column("BinSize")]
@@ -28,6 +30,8 @@ namespace Server.Models
 
         [Column("BinCapacity")]
         public int BinCapacity { get; set; }
+        [Column("OccupiedQty")]
+        public int OccupiedQty { get; set; }
 
         [Required]
         [Column("QrCodeString")]

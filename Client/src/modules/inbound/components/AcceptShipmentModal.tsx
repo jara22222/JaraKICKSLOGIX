@@ -1,6 +1,9 @@
 import { useInboundStore } from "@/modules/inbound/store/UseInboundStore";
 import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { getBinLocations } from "@/modules/bin-management/services/binLocation";
+import { registerReceivedProduct } from "@/modules/inbound/services/receiverWorkflow";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import {
   PackageCheck,
   X,
@@ -22,11 +25,13 @@ export default function AcceptShipmentModal() {
   const suggestedBin = useMemo(() => {
     if (!acceptTarget) return null;
 
-    // Pick available bins with enough capacity
+    // Pick available bins with matching size and enough capacity.
     const available = bins
       .filter(
         (bin) =>
-          bin.binStatus === "Available" && acceptTarget.qty <= bin.binCapacity
+          bin.binStatus === "Available" &&
+          bin.binSize === acceptTarget.size &&
+          acceptTarget.qty <= bin.binCapacity
       )
       .sort((a, b) => b.binCapacity - a.binCapacity);
 
@@ -34,7 +39,9 @@ export default function AcceptShipmentModal() {
 
     // If no bin has enough capacity for full qty, find any with partial space
     const partialAvailable = bins
-      .filter((bin) => bin.binStatus === "Available")
+      .filter(
+        (bin) => bin.binStatus === "Available" && bin.binSize === acceptTarget.size,
+      )
       .sort((a, b) => b.binCapacity - a.binCapacity);
 
     return partialAvailable.length > 0 ? partialAvailable[0] : null;
@@ -46,9 +53,30 @@ export default function AcceptShipmentModal() {
     ? acceptTarget.qty > suggestedBin.binCapacity
     : true;
 
+  const registerMutation = useMutation({
+    mutationFn: registerReceivedProduct,
+    onSuccess: (data) => {
+      acceptShipment(acceptTarget.id, data.binLocation);
+      showSuccessToast(
+        `Received product registered. Assigned bin ${data.binLocation}.`,
+      );
+    },
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.message ||
+        "Failed to register received product. Please try again.";
+      showErrorToast(message);
+    },
+  });
+
   const handleAccept = () => {
-    const binCode = suggestedBin ? suggestedBin.binLocation : "STAGING-01";
-    acceptShipment(acceptTarget.id, binCode);
+    registerMutation.mutate({
+      supplier: acceptTarget.supplier,
+      productName: acceptTarget.product,
+      sku: acceptTarget.sku,
+      size: acceptTarget.size,
+      quantity: acceptTarget.qty,
+    });
   };
 
   return (
@@ -96,6 +124,9 @@ export default function AcceptShipmentModal() {
                 </p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   {acceptTarget.sku} &middot; {acceptTarget.supplier}
+                </p>
+                <p className="text-[10px] text-slate-500 uppercase font-semibold">
+                  Size: {acceptTarget.size}
                 </p>
               </div>
             </div>
@@ -205,7 +236,7 @@ export default function AcceptShipmentModal() {
               <AlertTriangle className="size-4 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-700 leading-relaxed">
                 <strong>Partial fit:</strong> The selected bin does not have
-                enough capacity for all {acceptTarget.qty} units. Overflow items
+                enough capacity for all {acceptTarget.qty} units in size {acceptTarget.size}. Overflow items
                 may need to be split across multiple bins.
               </p>
             </div>
@@ -222,10 +253,13 @@ export default function AcceptShipmentModal() {
           </button>
           <button
             onClick={handleAccept}
+            disabled={registerMutation.isPending}
             className="px-6 py-2 bg-emerald-600 text-white text-xs font-bold uppercase rounded-lg hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2"
           >
             <PackageCheck className="size-3.5" />
-            Accept & Assign to Bin
+            {registerMutation.isPending
+              ? "Registering..."
+              : "Accept & Assign to Bin"}
           </button>
         </div>
       </div>

@@ -3,10 +3,10 @@ import {
   createSupplier,
   updateSupplierAccount,
 } from "@/modules/super-admin/services/supplier";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 
 export default function SupplierFormModal() {
   const queryClient = useQueryClient();
@@ -24,7 +24,7 @@ export default function SupplierFormModal() {
   const createMutation = useMutation({
     mutationFn: createSupplier,
     onSuccess: (data) => {
-      toast.success(data.message || "Supplier created successfully.");
+      showSuccessToast(data.message || "Supplier created successfully.");
       queryClient.invalidateQueries({ queryKey: ["superadmin-suppliers"] });
       handleClose();
     },
@@ -45,7 +45,7 @@ export default function SupplierFormModal() {
       };
     }) => updateSupplierAccount(supplierId, payload),
     onSuccess: (data) => {
-      toast.success(data.message || "Supplier updated successfully.");
+      showSuccessToast(data.message || "Supplier updated successfully.");
       queryClient.invalidateQueries({ queryKey: ["superadmin-suppliers"] });
       handleClose();
     },
@@ -79,7 +79,7 @@ export default function SupplierFormModal() {
   const handleSubmit = () => {
     if (isEditMode && editingSupplier) {
       if (!editingSupplier.userId || editingSupplier.userId.startsWith("seed-")) {
-        toast.error("Supplier ID is missing. Please refresh the page.");
+        showErrorToast("Supplier ID is missing. Please refresh the page.");
         return;
       }
 

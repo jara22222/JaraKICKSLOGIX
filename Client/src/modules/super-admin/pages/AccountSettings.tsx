@@ -1,8 +1,8 @@
 import SuperAdminHeader from "@/modules/super-admin/components/SuperAdminHeader";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Mail, Moon, Palette, ShieldCheck, Sun, UserRound } from "lucide-react";
 
 type AppearanceMode = "light" | "dark" | "system";
@@ -63,7 +63,7 @@ export default function AccountSettings() {
   const handleSaveProfile = () => {
     const userJson = localStorage.getItem("user");
     if (!userJson) {
-      toast.error("No active user profile found.");
+      showErrorToast("No active user profile found.");
       return;
     }
 
@@ -77,9 +77,9 @@ export default function AccountSettings() {
       };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       window.dispatchEvent(new Event("auth-user-updated"));
-      toast.success("Profile updated successfully.");
+      showSuccessToast("Profile updated successfully.");
     } catch {
-      toast.error("Failed to save profile.");
+      showErrorToast("Failed to save profile.");
     }
   };
 
@@ -87,7 +87,7 @@ export default function AccountSettings() {
     setAppearance(mode);
     localStorage.setItem(APPEARANCE_STORAGE_KEY, mode);
     applyAppearance(mode);
-    toast.success(`Appearance set to ${mode}.`);
+    showSuccessToast(`Appearance set to ${mode}.`);
   };
 
   return (

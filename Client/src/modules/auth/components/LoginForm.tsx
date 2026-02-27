@@ -9,13 +9,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser, type LoginCredentials } from "../services/auth";
 import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { showSuccessToast } from "@/shared/lib/toast";
 
 const getRedirectPathByRoles = (roles?: string[]) => {
   if (roles?.includes("SuperAdmin")) return "/superadmin";
   if (roles?.includes("BranchManager")) return "/accesscontroll";
-  if (roles?.includes("InboundCoordinator")) return "/inbound";
-  if (roles?.includes("OutboundCoordinator")) return "/outbound";
+  if (roles?.includes("Receiver") || roles?.includes("PutAway")) return "/inbound";
+  if (roles?.includes("DispatchClerk")) return "/outbound";
   if (roles?.includes("VASPersonnel")) return "/vas";
   return "/login";
 };
@@ -35,7 +35,7 @@ export default function LoginForm() {
       // 2. Store user info (optional, or use a state manager)
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      toast.success(`Welcome back, ${data.user.firstName}!`);
+      showSuccessToast(`Welcome back, ${data.user.firstName}!`);
       navigate(getRedirectPathByRoles(data.user?.roles), { replace: true });
     },
   });

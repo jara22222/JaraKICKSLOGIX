@@ -12,6 +12,7 @@ namespace Server.Models
         public string SupplierId { get; set; } = string.Empty;
         public virtual Users User { get; set; } = null!;
         public string ItemQty { get; set; } = string.Empty;
+        public int QuantityOnHand { get; set; }
         [MaxLength(50)]
         public string SKU { get; set; } = string.Empty;
         [MaxLength(3)]
@@ -20,6 +21,11 @@ namespace Server.Models
         public string QrString { get; set; }  = string.Empty;
         [MaxLength(20)]
         public int? CriticalThreshold { get; set; }
+        [MaxLength(30)]
+        public string WorkflowStatus { get; set; } = "PendingPutAway";
+        [MaxLength(128)]
+        public string? BinId { get; set; }
+        public bool IsBinAssigned { get; set; }
         public DateTime DateReceived { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
     }

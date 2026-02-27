@@ -96,23 +96,18 @@ export default function AccessControllFormModal() {
                 </label>
                 <div className="grid grid-cols-1 gap-2">
                   <RoleRadio
-                    title="Warehouse Manager"
-                    desc="Full branch access, Reports, User Mgmt"
-                    value="BranchManager"
+                    title="Receiver"
+                    desc="Registers incoming products and bin assignment"
+                    value="Receiver"
                   />
                   <RoleRadio
-                    title="Inbound Coordinator"
-                    desc="Receiving, Put-away, Supplier Liaison"
-                    value="InboundCoordinator"
+                    title="Put-Away Staff"
+                    desc="Handles put-away and item/bin verification scans"
+                    value="PutAway"
                   />
                   <RoleRadio
-                    title="Outbound / Dispatcher"
-                    desc="Picking, Packing, Courier Handover"
-                    value="OutboundCoordinator"
-                  />
-                  <RoleRadio
-                    title="Vas Personel"
-                    desc="Packing and labeling customer order"
+                    title="VAS Personnel"
+                    desc="Packing, labeling, and final outbound confirmation"
                     value="VASPersonnel"
                   />
                 </div>
