@@ -21,6 +21,19 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    const isCanceledRequest =
+      error?.code === "ERR_CANCELED" ||
+      error?.message === "canceled" ||
+      axios.isCancel(error);
+    if (isCanceledRequest) {
+      return Promise.reject(error);
+    }
+
+    const requestConfig = (error?.config ?? {}) as {
+      suppressErrorToast?: boolean;
+    };
+    const shouldSuppressErrorToast = Boolean(requestConfig.suppressErrorToast);
+
     const responseData = error?.response?.data;
     const validationErrors = responseData?.errors;
     const identityErrors = Array.isArray(responseData)
@@ -50,7 +63,9 @@ apiClient.interceptors.response.use(
       error?.message ||
       "Request failed. Please try again.";
 
-    showErrorToast(String(message));
+    if (!shouldSuppressErrorToast) {
+      showErrorToast(String(message));
+    }
     return Promise.reject(error);
   }
 );

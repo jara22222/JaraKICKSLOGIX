@@ -1,11 +1,18 @@
 import { useState } from "react";
 import HeaderCell from "@/shared/components/HeaderCell";
-import StatusBadge from "@/shared/components/StatusBadge";
 import Pagination from "@/shared/components/Pagination";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
 import { Eye, X, Package, Truck, Calendar, Hash } from "lucide-react";
-import { UseOrderState } from "@/modules/supplier/store/UseGetOrders";
+import { useQuery } from "@tanstack/react-query";
+import {
+  getSupplierReplenishmentOrders,
+  type SupplierReplenishmentOrder,
+} from "@/modules/supplier/services/supplierManagement";
+import {
+  formatInboundStatus,
+  getInboundStatusBadgeClass,
+} from "@/modules/inbound/utils/statusFormat";
 
 const CSV_PDF_HEADERS = [
   "PO Reference",
@@ -16,47 +23,45 @@ const CSV_PDF_HEADERS = [
   "Status",
 ];
 
-type Order = {
-  id: string;
-  partner: string;
-  items: number;
-  created: string;
-  eta: string;
-  status: string;
-};
-
 export default function OrdersTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [viewTarget, setViewTarget] = useState<Order | null>(null);
+  const [viewTarget, setViewTarget] = useState<SupplierReplenishmentOrder | null>(
+    null,
+  );
 
-  const MOCK_ORDERS = UseOrderState((o) => o.order);
-  const totalLength = MOCK_ORDERS.length;
-  const displayedData = MOCK_ORDERS.slice(
+  const { data: orders = [] } = useQuery({
+    queryKey: ["supplier-replenishment-orders"],
+    queryFn: getSupplierReplenishmentOrders,
+    retry: false,
+  });
+
+  const totalLength = orders.length;
+  const displayedData = orders.slice(
     (currentPage - 1) * pageSize,
-    currentPage * pageSize
+    currentPage * pageSize,
   );
 
   const handleCSV = () => {
-    const rows = MOCK_ORDERS.map((o) => [
+    const rows = orders.map((o) => [
       o.id,
       o.partner,
       String(o.items),
       o.created,
       o.eta,
-      o.status,
+      formatInboundStatus(o.status),
     ]);
     exportToCSV("replenishment-orders", CSV_PDF_HEADERS, rows);
   };
 
   const handlePDF = () => {
-    const rows = MOCK_ORDERS.map((o) => [
+    const rows = orders.map((o) => [
       o.id,
       o.partner,
       String(o.items),
       o.created,
       o.eta,
-      o.status,
+      formatInboundStatus(o.status),
     ]);
     exportToPDF(
       "replenishment-orders",
@@ -83,6 +88,13 @@ export default function OrdersTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {displayedData.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="p-6 text-sm text-slate-500 text-center">
+                    No replenishment orders found.
+                  </td>
+                </tr>
+              )}
               {displayedData.map((order, idx) => (
                 <tr
                   key={idx}
@@ -115,7 +127,14 @@ export default function OrdersTable() {
                     </div>
                   </td>
                   <td className="p-3">
-                    <StatusBadge status={order.status} />
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${getInboundStatusBadgeClass(
+                        order.status,
+                      )}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
+                      {formatInboundStatus(order.status)}
+                    </span>
                   </td>
                   <td className="p-3 text-right">
                     <button
@@ -234,7 +253,14 @@ export default function OrdersTable() {
                       Status
                     </span>
                   </div>
-                  <StatusBadge status={viewTarget.status} />
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${getInboundStatusBadgeClass(
+                      viewTarget.status,
+                    )}`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
+                    {formatInboundStatus(viewTarget.status)}
+                  </span>
                 </div>
               </div>
             </div>

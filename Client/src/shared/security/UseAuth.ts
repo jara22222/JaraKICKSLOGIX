@@ -1,11 +1,7 @@
-import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import { showSuccessToast } from "@/shared/lib/toast";
 
 //Done resolving
 export const UseAuth = () => {
-  const navigate = useNavigate();
-
   const getUser = useCallback(() => {
     const userJson = localStorage.getItem("user");
     try {
@@ -28,19 +24,13 @@ export const UseAuth = () => {
   }, [getUser]);
 
   const logout = useCallback(() => {
-    // 1. Clear all auth data
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    sessionStorage.clear();
     setUser(null);
-    showSuccessToast("You have been logged out.");
-
-    // 2. Redirect to login
-    // Using 'replace' prevents them from clicking 'back' to a protected page
-    navigate("/login", { replace: true });
-
-    // 3. Optional: Clear React Query cache or reload
-    window.location.reload();
-  }, [navigate]);
+    window.dispatchEvent(new Event("auth-user-updated"));
+    window.location.replace("/login");
+  }, []);
 
   return {
     user,

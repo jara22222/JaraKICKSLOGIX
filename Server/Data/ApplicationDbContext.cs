@@ -16,7 +16,7 @@ namespace Server.Data
             
         }
         public DbSet<AuditLog> AuditLogs { get; set; }
-        public DbSet<Products> Products { get; set; }
+        public DbSet<Inventory> Inventory { get; set; }
         public DbSet<BinLocation> BinLocations { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<StockMovement> StockMovements { get; set; }
@@ -27,9 +27,9 @@ namespace Server.Data
             base.OnModelCreating(builder);
 
             // Step 2: Configure the One-to-Many Relationship
-            builder.Entity<Products>()
+            builder.Entity<Inventory>()
                 .HasOne(p => p.User)            // Product has 1 User (Manager)
-                .WithMany(u => u.Products)      // User has Many Products
+                .WithMany(u => u.InventoryItems)      // User has Many Inventory items
                 .HasForeignKey(p => p.SupplierId)   // Link them via UserId
                 .OnDelete(DeleteBehavior.Cascade); // If User is deleted, delete their products (or use .Restrict to prevent deletion)
 

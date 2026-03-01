@@ -124,7 +124,7 @@ namespace Server.Controllers.DispatchController
                 return BadRequest(new ApiMessageDto { Message = "Confirmed quantity exceeds order quantity." });
             }
 
-            var product = await _context.Products
+            var product = await _context.Inventory
                 .Where(item => item.SKU == order.SKU && item.Size == order.Size && item.QuantityOnHand > 0)
                 .OrderBy(item => item.DateReceived)
                 .FirstOrDefaultAsync();
@@ -178,7 +178,7 @@ namespace Server.Controllers.DispatchController
             return Ok(new ApiMessageDto { Message = "Quantity confirmed. Item transferred to VAS station." });
         }
 
-        private async Task PushLowStockNotificationIfNeeded(Products product, string branch)
+        private async Task PushLowStockNotificationIfNeeded(Inventory product, string branch)
         {
             var threshold = product.CriticalThreshold ?? 5;
             if (product.QuantityOnHand > threshold)

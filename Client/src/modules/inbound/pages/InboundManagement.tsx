@@ -1,5 +1,4 @@
 import AcessControllHeader from "@/shared/layout/Header";
-import { useInboundStore } from "@/modules/inbound/store/UseInboundStore";
 import HeaderCell from "@/shared/components/HeaderCell";
 import Pagination from "@/shared/components/Pagination";
 import ExportToolbar from "@/shared/components/ExportToolbar";
@@ -7,7 +6,17 @@ import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
 import SearchToolBar from "@/shared/components/SearchToolBar";
 import DateFilter from "@/shared/components/DateFilter";
 import {
-  Eye,
+  approveSupplierShipment,
+  getPendingSupplierShipmentsForApproval,
+} from "@/modules/inbound/services/branchManagerInbound";
+import { getInboundReceipts } from "@/modules/inbound/services/inboundData";
+import {
+  formatInboundStatus,
+  getInboundStatusBadgeClass,
+} from "@/modules/inbound/utils/statusFormat";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
   PackageOpen,
   Truck,
   Warehouse,
@@ -22,12 +31,22 @@ import { useState } from "react";
  * They can see incoming shipments but CANNOT accept or assign.
  */
 export default function InboundManagement() {
-  const { incomingShipments, receipts } = useInboundStore();
+  const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const { data: incomingShipments = [] } = useQuery({
+    queryKey: ["branch-manager-pending-supplier-shipments"],
+    queryFn: getPendingSupplierShipmentsForApproval,
+    retry: false,
+  });
+  const { data: receipts = [] } = useQuery({
+    queryKey: ["inbound-receipts"],
+    queryFn: getInboundReceipts,
+    retry: false,
+  });
 
   const arrivedCount = incomingShipments.filter(
-    (s) => s.status === "Arrived"
+    (s) => s.status === "PendingAdminApproval"
   ).length;
   const inTransitCount = incomingShipments.filter(
     (s) => s.status === "In Transit"
@@ -35,7 +54,7 @@ export default function InboundManagement() {
   const storedCount = receipts.filter((r) => r.status === "Stored").length;
 
   const activeShipments = incomingShipments.filter(
-    (s) => s.status !== "Accepted"
+    (s) => s.status === "PendingAdminApproval"
   );
   const paginatedData = activeShipments.slice(
     (currentPage - 1) * pageSize,
@@ -60,56 +79,62 @@ export default function InboundManagement() {
     s.sku,
     String(s.qty),
     s.eta,
-    s.status,
+    formatInboundStatus(s.status),
   ]);
 
-  const handleCSV = () =>
+  const handleCSV = () => {
+    if (exportRows.length === 0) {
+      showErrorToast("No pending supplier shipments to export.");
+      return;
+    }
     exportToCSV("inbound-overview", exportHeaders, exportRows);
-  const handlePDF = () =>
+  };
+
+  const handlePDF = () => {
+    if (exportRows.length === 0) {
+      showErrorToast("No pending supplier shipments to export.");
+      return;
+    }
     exportToPDF(
       "inbound-overview",
-      "Inbound Overview Report",
+      "Inbound Supplier Approval Report",
       exportHeaders,
       exportRows
     );
-
-  const statusStyles = (status: string) => {
-    switch (status) {
-      case "Arrived":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      case "In Transit":
-        return "bg-blue-50 text-blue-700 border-blue-200";
-      default:
-        return "bg-slate-100 text-slate-500 border-slate-200";
-    }
   };
+
+  const approveMutation = useMutation({
+    mutationFn: approveSupplierShipment,
+    onSuccess: (data) => {
+      showSuccessToast(data.message || "Shipment approved.");
+      void queryClient.invalidateQueries({
+        queryKey: ["branch-manager-pending-supplier-shipments"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["inbound-incoming-shipments"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["inbound-activity-log"],
+      });
+    },
+    onError: (error: any) => {
+      showErrorToast(error?.response?.data?.message || "Failed to approve shipment.");
+    },
+  });
 
   return (
     <>
       <AcessControllHeader
         title="Inbound Overview"
-        label="View incoming products (read-only)"
+        label="Approve supplier shipments before receiver processing"
       />
       <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-        {/* View-only banner */}
-        <div className="mb-6 p-3 rounded-xl bg-blue-50 border border-blue-200 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-            <Eye className="size-4 text-blue-600" />
-          </div>
-          <p className="text-xs text-blue-700 font-medium leading-relaxed">
-            <strong>View-only mode.</strong> As a Branch Manager / Admin, you can
-            monitor incoming shipments but cannot accept or assign products.
-            Only Inbound Coordinators can process shipments from their dedicated
-            portal.
-          </p>
-        </div>
-
         {/* KPI Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
             <div className="flex justify-between items-start mb-3">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                Pending Acceptance
+                Pending Admin Approval
               </p>
               <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
                 <Clock className="size-5" />
@@ -118,7 +143,7 @@ export default function InboundManagement() {
             <h3 className="text-3xl font-black text-[#001F3F]">
               {arrivedCount}
             </h3>
-            <span className="text-xs text-slate-500">Shipments arrived</span>
+            <span className="text-xs text-slate-500">Supplier submissions waiting</span>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
             <div className="flex justify-between items-start mb-3">
@@ -170,8 +195,8 @@ export default function InboundManagement() {
           <DateFilter />
         </div>
 
-        {/* Read-only incoming shipments table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        {/* Admin approval table */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-visible">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -182,10 +207,17 @@ export default function InboundManagement() {
                   <HeaderCell label="Quantity" />
                   <HeaderCell label="ETA" />
                   <HeaderCell label="Status" />
-                  <HeaderCell label="" align="right" />
+                  <HeaderCell label="Action" align="right" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
+                {paginatedData.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-4 text-sm text-slate-500">
+                      No pending supplier shipments for approval.
+                    </td>
+                  </tr>
+                )}
                 {paginatedData.map((shipment) => (
                   <tr
                     key={shipment.id}
@@ -239,7 +271,9 @@ export default function InboundManagement() {
                     </td>
                     <td className="p-3">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusStyles(shipment.status)}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${getInboundStatusBadgeClass(
+                          shipment.status,
+                        )}`}
                       >
                         {shipment.status === "In Transit" && (
                           <Truck className="size-3" />
@@ -248,21 +282,25 @@ export default function InboundManagement() {
                           <PackageCheck className="size-3" />
                         )}
                         <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
-                        {shipment.status}
+                        {formatInboundStatus(shipment.status)}
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <span className="px-3 py-1.5 bg-slate-100 text-slate-400 text-xs font-bold uppercase tracking-wider rounded-lg inline-flex items-center gap-1.5 cursor-not-allowed">
-                        <Eye className="size-3.5" />
-                        View Only
-                      </span>
+                      <button
+                        onClick={() => approveMutation.mutate(shipment.id)}
+                        disabled={approveMutation.isPending}
+                        className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg inline-flex items-center gap-1.5 disabled:opacity-60"
+                      >
+                        <PackageCheck className="size-3.5" />
+                        {approveMutation.isPending ? "Approving..." : "Approve"}
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
+          <div className="relative z-20 px-4 py-3 border-t border-slate-100 flex items-center justify-between">
             <ExportToolbar onExportCSV={handleCSV} onExportPDF={handlePDF} />
             <Pagination
               currentPage={currentPage}

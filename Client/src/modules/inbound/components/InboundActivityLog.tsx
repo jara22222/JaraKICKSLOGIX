@@ -1,8 +1,9 @@
-import { useInboundStore } from "@/modules/inbound/store/UseInboundStore";
 import Pagination from "@/shared/components/Pagination";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getInboundActivityLog } from "@/modules/inbound/services/inboundData";
 
 const ACTION_STYLES: Record<string, string> = {
   ACCEPT: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -12,9 +13,13 @@ const ACTION_STYLES: Record<string, string> = {
 };
 
 export default function InboundActivityLog() {
-  const { activityLog } = useInboundStore();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const { data: activityLog = [] } = useQuery({
+    queryKey: ["inbound-activity-log"],
+    queryFn: getInboundActivityLog,
+    retry: false,
+  });
 
   const paginatedData = activityLog.slice(
     (currentPage - 1) * pageSize,

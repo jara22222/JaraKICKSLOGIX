@@ -5,7 +5,7 @@ import { getBinLocations } from "@/modules/bin-management/services/binLocation";
 import { exportBinQRCodesToPDF } from "@/shared/lib/exportUtils";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Printer, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function BinLocationManagement() {
   const setIsAddModalOpen = UseBinState((b) => b.setIsAddModalOpen);
@@ -16,6 +16,11 @@ export default function BinLocationManagement() {
     queryKey: ["branchmanager-bins"],
     queryFn: getBinLocations,
   });
+
+  useEffect(() => {
+    // Ensure add modal is closed when entering this page.
+    setIsAddModalOpen(false);
+  }, [setIsAddModalOpen]);
 
   const handlePrintAll = async () => {
     await exportBinQRCodesToPDF(
@@ -80,7 +85,7 @@ export default function BinLocationManagement() {
               Print All QRs
             </button>
             <button
-              onClick={setIsAddModalOpen}
+              onClick={() => setIsAddModalOpen(true)}
               className="px-6 py-2.5 bg-[#001F3F] text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-[#00162e] shadow-lg shadow-blue-900/20 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
             >
               <Plus className="size-4 text-[#FFD700]" />

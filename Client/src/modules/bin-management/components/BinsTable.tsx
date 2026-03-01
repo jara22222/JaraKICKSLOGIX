@@ -82,7 +82,7 @@ export default function BinsTable({
     onSuccess: (data) => {
       showSuccessToast(data.message || "Bin location created successfully.");
       queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
-      setIsAddModalOpen();
+      setIsAddModalOpen(false);
       setNewBin({ binLocation: "", binSize: "M", binCapacity: 20 });
     },
   });
@@ -376,7 +376,7 @@ export default function BinsTable({
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
               <h3 className="font-bold text-[#001F3F]">Create New Bin</h3>
               <button
-                onClick={setIsAddModalOpen}
+                onClick={() => setIsAddModalOpen(false)}
                 className="text-slate-400 hover:text-red-500"
               >
                 <X size={20} />
@@ -444,7 +444,7 @@ export default function BinsTable({
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"
-                  onClick={setIsAddModalOpen}
+                  onClick={() => setIsAddModalOpen(false)}
                   className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-lg hover:bg-slate-50 text-sm"
                 >
                   Cancel

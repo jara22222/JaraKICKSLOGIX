@@ -16,9 +16,25 @@ import { useMemo } from "react";
 
 export default function AcceptShipmentModal() {
   const { acceptTarget, setAcceptTarget, acceptShipment } = useInboundStore();
+  const userRoles: string[] = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed?.roles) ? parsed.roles : [];
+    } catch {
+      return [];
+    }
+  }, []);
+  const canFetchBins = userRoles.some(
+    (role) => role === "BranchManager" || role === "SuperAdmin",
+  );
+
   const { data: bins = [] } = useQuery({
     queryKey: ["branchmanager-bins"],
-    queryFn: getBinLocations,
+    queryFn: () => getBinLocations({ suppressErrorToast: true }),
+    enabled: Boolean(acceptTarget) && canFetchBins,
+    retry: false,
   });
 
   // Auto-find the best available bin

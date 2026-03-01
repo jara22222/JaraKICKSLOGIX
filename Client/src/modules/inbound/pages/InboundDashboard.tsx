@@ -1,8 +1,16 @@
 import InboundHeader from "@/modules/inbound/components/InboundHeader";
 import InboundKPIs from "@/modules/inbound/components/InboundKPIs";
-import { useInboundStore } from "@/modules/inbound/store/UseInboundStore";
+import {
+  getInboundActivityLog,
+  getInboundIncomingShipments,
+} from "@/modules/inbound/services/inboundData";
+import {
+  formatInboundStatus,
+  getInboundStatusBadgeClass,
+} from "@/modules/inbound/utils/statusFormat";
 import { PackageOpen, Activity } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 const ACTION_STYLES: Record<string, string> = {
   ACCEPT: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -11,7 +19,16 @@ const ACTION_STYLES: Record<string, string> = {
 };
 
 export default function InboundDashboard() {
-  const { incomingShipments, activityLog } = useInboundStore();
+  const { data: incomingShipments = [] } = useQuery({
+    queryKey: ["inbound-incoming-shipments"],
+    queryFn: getInboundIncomingShipments,
+    retry: false,
+  });
+  const { data: activityLog = [] } = useQuery({
+    queryKey: ["inbound-activity-log"],
+    queryFn: getInboundActivityLog,
+    retry: false,
+  });
 
   const pending = incomingShipments.filter(
     (s) => s.status === "Arrived" || s.status === "In Transit"
@@ -62,13 +79,11 @@ export default function InboundDashboard() {
                     </div>
                   </div>
                   <span
-                    className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
-                      s.status === "Arrived"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-blue-50 text-blue-700 border-blue-200"
-                    }`}
+                    className={`text-xs font-semibold px-3 py-1 rounded-full border ${getInboundStatusBadgeClass(
+                      s.status,
+                    )}`}
                   >
-                    {s.status}
+                    {formatInboundStatus(s.status)}
                   </span>
                 </div>
               ))}

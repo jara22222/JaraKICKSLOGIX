@@ -1,20 +1,38 @@
 import {
-  Building2,
   Activity,
-  ClipboardList,
   Footprints,
   LayoutDashboard,
+  LogOut,
   Menu,
   PackageCheck,
   PackageOpen,
   Printer,
+  Settings,
   X,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { UseAuth } from "@/shared/security/UseAuth";
 
 export default function InboundMobileSidebar() {
+  const { user, logout } = UseAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const userRoles: string[] = useMemo(() => {
+    try {
+      const rawUser = localStorage.getItem("user");
+      if (!rawUser) return [];
+      const parsedUser = JSON.parse(rawUser);
+      return Array.isArray(parsedUser?.roles) ? parsedUser.roles : [];
+    } catch {
+      return [];
+    }
+  }, []);
+  const hasPutAwayRole = userRoles.includes("PutAway");
+  const hasReceiverRole = userRoles.includes("Receiver");
+  const handleLogout = () => {
+    setIsMobileOpen(false);
+    logout();
+  };
 
   const NavItem = ({
     icon,
@@ -91,17 +109,27 @@ export default function InboundMobileSidebar() {
           <p className="px-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
             Inbound Operations
           </p>
-          <NavItem icon={<LayoutDashboard className="size-5" />} label="Dashboard" link="" />
-          <NavItem icon={<PackageOpen className="size-5" />} label="Incoming Shipments" link="incoming" />
-          <NavItem icon={<ClipboardList className="size-5" />} label="Receiving Log" link="receivinglog" />
-          <NavItem icon={<Printer className="size-5" />} label="Put-Away & Labels" link="putaway" />
+          {hasReceiverRole && (
+            <NavItem icon={<LayoutDashboard className="size-5" />} label="Dashboard" link="" />
+          )}
+          {hasReceiverRole && (
+            <NavItem
+              icon={<PackageOpen className="size-5" />}
+              label="Incoming Shipments"
+              link="incoming"
+            />
+          )}
+          {(hasPutAwayRole || hasReceiverRole) && (
+            <NavItem
+              icon={<Printer className="size-5" />}
+              label={hasPutAwayRole && !hasReceiverRole ? "Put-Away Tasks" : "Assigning & Labeling"}
+              link={hasPutAwayRole && !hasReceiverRole ? "putaway" : "labeling"}
+            />
+          )}
+          {hasReceiverRole && (
+            <NavItem icon={<PackageCheck className="size-5" />} label="Assigned" link="assigned" />
+          )}
           <NavItem icon={<Activity className="size-5" />} label="Activity Log" link="activity" />
-
-          <div className="my-4 border-t border-white/10"></div>
-          <p className="px-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-            Quick Access
-          </p>
-          <NavItem icon={<Building2 className="size-5" />} label="Admin Panel" link="/accesscontroll" />
         </nav>
 
         <div className="p-4 border-t border-white/10">
@@ -111,13 +139,28 @@ export default function InboundMobileSidebar() {
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-white group-hover:text-[#FFD700] transition-colors">
-                LeBron James
+                {user?.firstName || "User"} {user?.lastName || ""}
               </span>
               <span className="text-[10px] text-emerald-400 uppercase tracking-wide opacity-80">
-                Inbound Coordinator
+                {user?.roles?.[0] || "Inbound Coordinator"}
               </span>
             </div>
           </div>
+          <Link
+            to="/inbound/accountsettings"
+            onClick={() => setIsMobileOpen(false)}
+            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/5 transition-colors"
+          >
+            <Settings className="size-4" />
+            Account Settings
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
+          >
+            <LogOut className="size-4" />
+            Sign Out
+          </button>
         </div>
       </aside>
     </>

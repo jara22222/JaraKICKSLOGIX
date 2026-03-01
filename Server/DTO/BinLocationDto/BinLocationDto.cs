@@ -22,6 +22,7 @@ namespace Server.DTO
         public string BinStatus { get; set; } = string.Empty;
         public string BinSize { get; set; } = string.Empty;
         public int BinCapacity { get; set; }
+        public int OccupiedQty { get; set; }
         public string QrCodeString { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

@@ -9,6 +9,8 @@ export interface PutAwayTask {
   binId: string;
   binLocation: string;
   itemQrString: string;
+  claimedByUserId?: string;
+  claimedBy?: string;
   dateReceived: string;
 }
 

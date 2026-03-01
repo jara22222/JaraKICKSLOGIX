@@ -3,15 +3,26 @@ import SupplierOrderTable from "@/modules/supplier/components/SupplierOrderTable
 import TabButton from "@/modules/supplier/components/TabButton";
 import SearchToolBar from "@/shared/components/SearchToolBar";
 import { useTabState } from "@/modules/supplier/store/UseActiveTab";
-import { UseOrderState } from "@/modules/supplier/store/UseGetOrders";
-import { UsePartnerState } from "@/modules/supplier/store/UseGetPartner";
+import {
+  getSupplierPartners,
+  getSupplierReplenishmentOrders,
+} from "@/modules/supplier/services/supplierManagement";
+import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 
 export default function SupplierManagement() {
-  const MOCK_PARTNERS = UsePartnerState((p) => p.partner);
-  const MOCK_ORDERS = UseOrderState((o) => o.order);
   const setActiveTab = useTabState((a) => a.setActiveTab);
   const activeTab = useTabState((a) => a.activeTab);
+  const { data: partners = [] } = useQuery({
+    queryKey: ["supplier-partners"],
+    queryFn: getSupplierPartners,
+    retry: false,
+  });
+  const { data: replenishmentOrders = [] } = useQuery({
+    queryKey: ["supplier-replenishment-orders"],
+    queryFn: getSupplierReplenishmentOrders,
+    retry: false,
+  });
 
   return (
     <>
@@ -37,13 +48,13 @@ export default function SupplierManagement() {
             label="Brand Partners"
             isActive={activeTab === "partners"}
             onClick={() => setActiveTab("partners")}
-            count={MOCK_PARTNERS.length}
+            count={partners.length}
           />
           <TabButton
             label="Replenishment Status"
             isActive={activeTab === "orders"}
             onClick={() => setActiveTab("orders")}
-            count={MOCK_ORDERS.filter((o) => o.status !== "Received").length}
+            count={replenishmentOrders.length}
           />
         </div>
 

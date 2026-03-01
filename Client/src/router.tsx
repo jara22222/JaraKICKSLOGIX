@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { createBrowserRouter } from "react-router-dom";
+import { Navigate, createBrowserRouter } from "react-router-dom";
 
 // Layouts
 import AccessControlRootLayout from "./shared/layout/RootLayout";
@@ -30,9 +30,9 @@ import AccountSettings from "./modules/super-admin/pages/AccountSettings";
 // Inbound Coordinator Pages
 import InboundDashboard from "./modules/inbound/pages/InboundDashboard";
 import IncomingShipments from "./modules/inbound/pages/IncomingShipments";
-import ReceivingLog from "./modules/inbound/pages/ReceivingLog";
 import InboundActivity from "./modules/inbound/pages/InboundActivity";
 import PutAwayLabels from "./modules/inbound/pages/PutAwayLabels";
+import InboundAssigned from "./modules/inbound/pages/InboundAssigned";
 
 // Outbound Coordinator Pages
 import OutboundDashboard from "./modules/outbound/pages/OutboundDashboard";
@@ -124,12 +124,20 @@ export const router = createBrowserRouter([
             element: <IncomingShipments />,
           },
           {
-            path: "receivinglog",
-            element: <ReceivingLog />,
-          },
-          {
             path: "activity",
             element: <InboundActivity />,
+          },
+          {
+            path: "labeling",
+            element: <PutAwayLabels />,
+          },
+          {
+            path: "assigned",
+            element: <InboundAssigned />,
+          },
+          {
+            path: "accountsettings",
+            element: <ProfileSettings />,
           },
           {
             path: "putaway",

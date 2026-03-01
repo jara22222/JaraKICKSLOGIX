@@ -5,9 +5,11 @@ import { Link, useLocation } from "react-router-dom";
 const BREADCRUMB_LABELS: Record<string, string> = {
   inbound: "Inbound",
   incoming: "Incoming Shipments",
-  receivinglog: "Receiving Log",
-  putaway: "Put-Away & Labels",
+  putaway: "Assigning & Labeling",
+  labeling: "Assigning & Labeling",
+  assigned: "Assigned",
   activity: "Activity Log",
+  accountsettings: "Account Settings",
 };
 
 export default function InboundHeader({

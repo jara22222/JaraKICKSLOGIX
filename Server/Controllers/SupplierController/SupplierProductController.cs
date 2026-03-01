@@ -33,30 +33,32 @@ namespace Server.Controllers.SupplierEndpoints
                 var normalizedSku = dto.SKU.Trim();
                 var normalizedSize = dto.Size.Trim().ToUpperInvariant();
 
-                var product = new Products
+                var product = new Inventory
                 {
                     ProductId = Guid.NewGuid().ToString(),
                     SupplierId = userId,
+                    SupplierName = userName,
+                    ProductName = dto.ProductName.Trim(),
                     ItemQty = dto.Quantity.ToString(),
                     QuantityOnHand = dto.Quantity,
                     SKU = normalizedSku,
                     Size = normalizedSize,
                     QrString = $"PRODUCT:{normalizedSku}:{Guid.NewGuid()}",
                     CriticalThreshold = GetThresholdBySize(normalizedSize),
-                    WorkflowStatus = "PendingReceive",
+                    WorkflowStatus = "PendingAdminApproval",
                     BinId = null,
                     IsBinAssigned = false,
                     DateReceived = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                _context.Products.Add(product);
+                _context.Inventory.Add(product);
                 _context.StockMovements.Add(new StockMovement
                 {
                     ProductId = product.ProductId,
                     Branch = branch,
                     Action = "SupplierSubmit",
-                    ToStatus = "PendingReceive",
+                    ToStatus = "PendingAdminApproval",
                     Quantity = dto.Quantity,
                     PerformedByUserId = userId,
                     PerformedBy = userName,

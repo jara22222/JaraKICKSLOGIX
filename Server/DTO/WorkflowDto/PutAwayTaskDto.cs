@@ -10,6 +10,8 @@ namespace Server.DTO.WorkflowDto
         public string BinId { get; set; } = string.Empty;
         public string BinLocation { get; set; } = string.Empty;
         public string ItemQrString { get; set; } = string.Empty;
+        public string? ClaimedByUserId { get; set; }
+        public string? ClaimedBy { get; set; }
         public DateTime DateReceived { get; set; }
     }
 }

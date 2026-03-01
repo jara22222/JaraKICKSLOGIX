@@ -293,6 +293,78 @@ namespace Server.Migrations
                     b.ToTable("BranchNotifications");
                 });
 
+            modelBuilder.Entity("Server.Models.Inventory", b =>
+                {
+                    b.Property<string>("ProductId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("BinId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int?>("CriticalThreshold")
+                        .HasMaxLength(20)
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DateReceived")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsBinAssigned")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ItemQty")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("QrString")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("QuantityOnHand")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SKU")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<string>("SupplierId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SupplierName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WorkflowStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("ProductId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("Inventory");
+                });
+
             modelBuilder.Entity("Server.Models.Order", b =>
                 {
                     b.Property<string>("OrderId")
@@ -360,68 +432,6 @@ namespace Server.Migrations
                     b.HasIndex("Branch", "Status", "CreatedAt");
 
                     b.ToTable("Orders");
-                });
-
-            modelBuilder.Entity("Server.Models.Products", b =>
-                {
-                    b.Property<string>("ProductId")
-                        .HasMaxLength(36)
-                        .HasColumnType("nvarchar(36)");
-
-                    b.Property<string>("BinId")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<int?>("CriticalThreshold")
-                        .HasMaxLength(20)
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("DateReceived")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsBinAssigned")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("ItemQty")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("QrString")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<int>("QuantityOnHand")
-                        .HasColumnType("int");
-
-                    b.Property<string>("SKU")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Size")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)");
-
-                    b.Property<string>("SupplierId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("WorkflowStatus")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.HasKey("ProductId");
-
-                    b.HasIndex("SupplierId");
-
-                    b.ToTable("Products");
                 });
 
             modelBuilder.Entity("Server.Models.StockMovement", b =>
@@ -638,10 +648,10 @@ namespace Server.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Server.Models.Products", b =>
+            modelBuilder.Entity("Server.Models.Inventory", b =>
                 {
                     b.HasOne("Server.Models.Users", "User")
-                        .WithMany("Products")
+                        .WithMany("InventoryItems")
                         .HasForeignKey("SupplierId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -651,7 +661,7 @@ namespace Server.Migrations
 
             modelBuilder.Entity("Server.Models.Users", b =>
                 {
-                    b.Navigation("Products");
+                    b.Navigation("InventoryItems");
                 });
 #pragma warning restore 612, 618
         }

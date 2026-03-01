@@ -1,4 +1,8 @@
-import { useInboundStore } from "@/modules/inbound/store/UseInboundStore";
+import {
+  getInboundActivityLog,
+  getInboundIncomingShipments,
+  getInboundReceipts,
+} from "@/modules/inbound/services/inboundData";
 import {
   PackageCheck,
   Truck,
@@ -7,9 +11,24 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 export default function InboundKPIs() {
-  const { incomingShipments, receipts, activityLog } = useInboundStore();
+  const { data: incomingShipments = [] } = useQuery({
+    queryKey: ["inbound-incoming-shipments"],
+    queryFn: getInboundIncomingShipments,
+    retry: false,
+  });
+  const { data: receipts = [] } = useQuery({
+    queryKey: ["inbound-receipts"],
+    queryFn: getInboundReceipts,
+    retry: false,
+  });
+  const { data: activityLog = [] } = useQuery({
+    queryKey: ["inbound-activity-log"],
+    queryFn: getInboundActivityLog,
+    retry: false,
+  });
 
   const arrivedCount = incomingShipments.filter(
     (s) => s.status === "Arrived"

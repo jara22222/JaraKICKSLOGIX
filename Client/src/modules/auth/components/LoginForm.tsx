@@ -14,7 +14,8 @@ import { showSuccessToast } from "@/shared/lib/toast";
 const getRedirectPathByRoles = (roles?: string[]) => {
   if (roles?.includes("SuperAdmin")) return "/superadmin";
   if (roles?.includes("BranchManager")) return "/accesscontroll";
-  if (roles?.includes("Receiver") || roles?.includes("PutAway")) return "/inbound";
+  if (roles?.includes("PutAway")) return "/inbound/putaway";
+  if (roles?.includes("Receiver")) return "/inbound";
   if (roles?.includes("DispatchClerk")) return "/outbound";
   if (roles?.includes("VASPersonnel")) return "/vas";
   return "/login";
@@ -26,6 +27,10 @@ export default function LoginForm() {
     userName: "",
     password: "",
   });
+  const [clientErrors, setClientErrors] = useState<{
+    userName?: string;
+    password?: string;
+  }>({});
 
   const mutation = useMutation({
     mutationFn: loginUser,
@@ -42,10 +47,42 @@ export default function LoginForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: { userName?: string; password?: string } = {};
+
+    if (!form.userName.trim()) {
+      nextErrors.userName = "Username is required.";
+    }
+    if (!form.password.trim()) {
+      nextErrors.password = "Password is required.";
+    }
+
+    setClientErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     mutation.mutate(form);
   };
   const getFieldError = (fieldName: "UserName" | "Password") => {
+    if (fieldName === "UserName" && clientErrors.userName) {
+      return clientErrors.userName;
+    }
+    if (fieldName === "Password" && clientErrors.password) {
+      return clientErrors.password;
+    }
+
     return (mutation.error as any)?.response?.data?.errors?.[fieldName]?.[0];
+  };
+  const getNonFieldError = () => {
+    const errorResponse = (mutation.error as any)?.response;
+    const responseData = errorResponse?.data;
+
+    if (errorResponse?.status === 401) {
+      return "Username and password do not exist.";
+    }
+
+    if (!responseData?.errors && responseData?.title) {
+      return String(responseData.title);
+    }
+    return null;
   };
   return (
     <>
@@ -68,7 +105,12 @@ export default function LoginForm() {
                 className="w-full h-full px-3 outline-none bg-transparent placeholder-gray-400 invalid:text-red-600"
                 placeholder="e.g. 547541 or John_Doe"
                 value={form.userName}
-                onChange={(e) => setForm({ ...form, userName: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, userName: e.target.value });
+                  if (clientErrors.userName) {
+                    setClientErrors((prev) => ({ ...prev, userName: undefined }));
+                  }
+                }}
               />
               <InputGroupAddon className="px-3 text-gray-500 group-has-[:invalid]:text-red-500">
                 <User />
@@ -89,7 +131,12 @@ export default function LoginForm() {
                 placeholder="********"
                 type="password"
                 value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, password: e.target.value });
+                  if (clientErrors.password) {
+                    setClientErrors((prev) => ({ ...prev, password: undefined }));
+                  }
+                }}
               />
               <InputGroupAddon className="px-3 text-gray-500 group-has-[:invalid]:text-red-500">
                 <LockIcon />
@@ -98,6 +145,11 @@ export default function LoginForm() {
             {getFieldError("Password") && (
               <span className="text-red-500 text-xs flex items-center gap-1">
                 <AlertCircle size={12} /> {getFieldError("Password")}
+              </span>
+            )}
+            {mutation.isError && getNonFieldError() && (
+              <span className="text-red-500 text-xs flex items-center gap-1">
+                <AlertCircle size={12} /> {getNonFieldError()}
               </span>
             )}
           </div>
@@ -110,13 +162,6 @@ export default function LoginForm() {
             >
               {mutation.isPending ? "Signing in..." : "Sign In to Portal"}
             </Button>
-            {mutation.isError &&
-              (!mutation.error as any).response?.data?.errors && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm text-center">
-                  {(mutation.error as any).response?.data?.title ||
-                    "Login failed. Please check your credentials."}
-                </div>
-              )}
           </div>
           {/* Divider */}
           <div className="relative flex items-center justify-center my-4">
