@@ -27,7 +27,7 @@ namespace Server.Controllers
                 return BadRequest(ModelState);
 
             // 1. Find user by username
-            var user = await _userManager.FindByNameAsync(loginDto.UserName);
+            var user = await _userManager.FindByNameAsync(loginDto.Username);
             if (user == null)
                 return Unauthorized(new { message = "Invalid username or password" });
 

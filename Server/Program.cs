@@ -20,12 +20,8 @@ builder.Services.AddCors(options =>
         var allowedOrigins = new[]
         {
             "http://localhost:5173",
-            "https://localhost:5173",
-            "https://jara-kickslogix.vercel.app",
             "http://192.168.56.1:5173",
-            "https://192.168.56.1:5173",
-            "http://192.168.254.131:5173",
-            "https://192.168.254.131:5173"
+            "http://192.168.254.131:5173"
         };
 
         policy
@@ -112,7 +108,6 @@ using (var scope = app.Services.CreateScope())
 }
 app.UseRouting();
 app.UseCors("MyAllowSpecificOrigins");
-app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
