@@ -183,6 +183,29 @@ builder.Services.AddAuthentication(options => {
             System.Text.Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!) // Added dot
         )
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrWhiteSpace(accessToken) &&
+                (path.StartsWithSegments("/branch-notificationHub") ||
+                 path.StartsWithSegments("/branchAccount-managerHub") ||
+                 path.StartsWithSegments("/supplierHub") ||
+                 path.StartsWithSegments("/managerHub") ||
+                 path.StartsWithSegments("/update-managerHub") ||
+                 path.StartsWithSegments("/archive-managerHub") ||
+                 path.StartsWithSegments("/getAll-managerHub") ||
+                 path.StartsWithSegments("/search-managerHub")))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
 
 
