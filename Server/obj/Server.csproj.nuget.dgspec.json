@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\IT15-KICKSLOGIX\\server\\Server.csproj": {}
+    "C:\\IT15-KICKSLOGIX\\Server\\Server.csproj": {}
   },
   "projects": {
-    "C:\\IT15-KICKSLOGIX\\server\\Server.csproj": {
+    "C:\\IT15-KICKSLOGIX\\Server\\Server.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\IT15-KICKSLOGIX\\server\\Server.csproj",
+        "projectUniqueName": "C:\\IT15-KICKSLOGIX\\Server\\Server.csproj",
         "projectName": "Server",
-        "projectPath": "C:\\IT15-KICKSLOGIX\\server\\Server.csproj",
+        "projectPath": "C:\\IT15-KICKSLOGIX\\Server\\Server.csproj",
         "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "C:\\IT15-KICKSLOGIX\\server\\obj\\",
+        "outputPath": "C:\\IT15-KICKSLOGIX\\Server\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
