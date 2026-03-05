@@ -1,12 +1,4 @@
-import {
-  Bell,
-  CheckCheck,
-  ChevronRight,
-  Circle,
-  LogOut,
-  Settings,
-  Trash2,
-} from "lucide-react";
+import { Bell, CheckCheck, ChevronRight, Circle, LogOut, Settings, Trash2 } from "lucide-react";
 import MobileSidebar from "@/shared/layout/MobileSidebar";
 import { Link, useLocation } from "react-router-dom";
 import { UseAuth } from "../security/UseAuth";
@@ -301,7 +293,7 @@ export default function AcessControllHeader({
   return (
     <>
       <MobileSidebar />
-      <header className="h-14 border-b border-slate-200 bg-white/90 backdrop-blur-md flex items-center justify-between px-6 lg:px-8 z-40 sticky top-0">
+      <header className="h-14 border-b border-slate-200 bg-white/90 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 lg:px-8 z-40 sticky top-0">
         <div className="flex items-center gap-3">
           {/* Breadcrumbs */}
           <nav className="hidden lg:flex items-center gap-1 text-xs">
@@ -334,7 +326,14 @@ export default function AcessControllHeader({
           </span>
         </div>
 
-        <div className="hidden sm:flex items-center gap-3 relative">
+        <div className="flex items-center gap-2 sm:gap-3 relative">
+          <Link
+            to="/accesscontroll/profilesettings"
+            className="inline-flex lg:hidden items-center justify-center w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 text-slate-500 hover:bg-blue-50 hover:text-[#001F3F] transition-colors"
+            aria-label="Open profile settings"
+          >
+            <Settings className="size-4" />
+          </Link>
           <div className="relative" ref={profileRef}>
             <button
               type="button"
@@ -354,7 +353,7 @@ export default function AcessControllHeader({
             </button>
 
             {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#0f1c33] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute right-0 mt-2 w-[min(14rem,calc(100vw-1rem))] bg-white dark:bg-[#0f1c33] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="p-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
                   <p className="text-xs font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
                     Account
@@ -386,7 +385,7 @@ export default function AcessControllHeader({
 
           <div ref={notificationRef}>
             {isNotificationOpen && (
-              <div className="absolute right-0 top-10 w-80 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-50">
+              <div className="absolute right-0 top-10 w-[min(20rem,calc(100vw-1rem))] bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-50">
                 <div className="p-3 border-b border-slate-100 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">

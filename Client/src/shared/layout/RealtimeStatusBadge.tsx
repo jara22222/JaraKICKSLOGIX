@@ -63,28 +63,26 @@ export default function RealtimeStatusBadge({
     };
   }, []);
 
-  const { dotClass, label } = useMemo(() => {
+  const { label } = useMemo(() => {
     switch (state) {
       case "connected":
-        return { dotClass: "bg-emerald-500", label: "Realtime Connected" };
+        return { label: "Realtime Connected" };
       case "reconnecting":
-        return { dotClass: "bg-amber-500", label: "Realtime Reconnecting" };
+        return { label: "Realtime Reconnecting" };
       case "connecting":
-        return { dotClass: "bg-blue-500", label: "Realtime Connecting" };
+        return { label: "Realtime Connecting" };
       default:
-        return { dotClass: "bg-rose-500", label: "Realtime Offline" };
+        return { label: "Realtime Offline" };
     }
   }, [state]);
 
-  return (
-    <div
-      className={`fixed top-4 ${rightOffsetClass} z-[69] inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 py-1 shadow-sm`}
-      title={label}
-    >
-      <span className={`size-2 rounded-full ${dotClass}`} />
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-        {label}
-      </span>
-    </div>
-  );
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Console-only status for realtime diagnostics.
+      console.info(`[SignalR] ${label} (${getHubUrl("branch-notificationHub")})`);
+    }
+  }, [label]);
+
+  void rightOffsetClass;
+  return null;
 }

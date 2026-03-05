@@ -23,6 +23,7 @@ const CSV_PDF_HEADERS = [
   "Bin Location",
   "Bin Status",
   "SKU",
+  "Supplier Name",
   "Item Batch Name",
   "Batch Qty",
   "Total Product Qty",
@@ -125,6 +126,7 @@ export default function InvetorTable() {
       item.binLocation,
       item.binStatus,
       item.sku,
+      item.supplierName,
       item.itemBatchName,
       String(item.batchQty),
       String(item.totalProductQty),
@@ -142,6 +144,7 @@ export default function InvetorTable() {
       item.binLocation,
       item.binStatus,
       item.sku,
+      item.supplierName,
       item.itemBatchName,
       String(item.batchQty),
       String(item.totalProductQty),
@@ -157,13 +160,99 @@ export default function InvetorTable() {
   return (
     <>
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-visible">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="p-3 space-y-3 lg:hidden">
+          {isLoading ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              Loading inventory...
+            </div>
+          ) : displayedData.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              No inventory items found.
+            </div>
+          ) : (
+            displayedData.map((item) => (
+              <article
+                key={`${item.itemBatchName}-${item.binLocation}-${item.size}-mobile`}
+                className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-bold text-[#001F3F]">{item.itemBatchName}</p>
+                  <span className="text-xs font-mono font-bold text-[#001F3F] bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                    {item.binLocation}
+                  </span>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  SKU {item.sku} · Size {item.size}
+                </p>
+                <p className="mt-2 text-xs text-slate-600">Supplier: {item.supplierName}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
+                    <p className="text-slate-400">Batch Qty</p>
+                    <p className="font-bold text-[#001F3F]">
+                      {Number(item.batchQty ?? 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
+                    <p className="text-slate-400">Total Qty</p>
+                    <p className="font-bold text-[#001F3F]">
+                      {Number(item.totalProductQty ?? 0).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold ${
+                      item.binStatus === "Occupied"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : item.binStatus === "Available"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-slate-50 text-slate-600 border-slate-200"
+                    }`}
+                  >
+                    {item.binStatus}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold ${
+                      item.lowStockStatus === "Low Stock"
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    }`}
+                  >
+                    {item.lowStockStatus}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  {item.lowStockStatus === "Low Stock" ? (
+                    item.lowStockApprovalStatus === "Approved" ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200 cursor-default select-none">
+                        Approved
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setApproveTarget(item)}
+                        disabled={approveMutation.isPending}
+                        className="w-full px-3 py-2 bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                      >
+                        <CheckCheck className="size-3.5" />
+                        Approve
+                      </button>
+                    )
+                  ) : (
+                    <span className="text-xs text-slate-400">No action needed</span>
+                  )}
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full min-w-[1200px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100">
                 <HeaderCell label="Bin Location" />
                 <HeaderCell label="Bin Status" />
                 <HeaderCell label="SKU" />
+                <HeaderCell label="Supplier Name" />
                 <HeaderCell label="Item Batch Name" />
                 <HeaderCell label="Batch Qty" />
                 <HeaderCell label="Total Product Qty" />
@@ -177,13 +266,13 @@ export default function InvetorTable() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={11} className="p-4 text-sm text-slate-500 text-center">
+                  <td colSpan={12} className="p-4 text-sm text-slate-500 text-center">
                     Loading inventory...
                   </td>
                 </tr>
               ) : displayedData.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-4 text-sm text-slate-500 text-center">
+                  <td colSpan={12} className="p-4 text-sm text-slate-500 text-center">
                     No inventory items found.
                   </td>
                 </tr>
@@ -216,6 +305,9 @@ export default function InvetorTable() {
                       <span className="text-xs font-mono font-bold text-[#001F3F] bg-slate-50 px-2 py-1 rounded border border-slate-200">
                         {item.sku}
                       </span>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-sm text-slate-700">{item.supplierName}</span>
                     </td>
                     <td className="p-3">
                       <span className="text-sm font-medium text-slate-700">
@@ -286,7 +378,7 @@ export default function InvetorTable() {
             </tbody>
           </table>
         </div>
-        <div className="relative z-20 px-4 py-3 border-t border-slate-100 flex items-center justify-between">
+        <div className="relative z-20 px-4 py-3 border-t border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <ExportToolbar onExportCSV={handleCSV} onExportPDF={handlePDF} />
           <Pagination
             currentPage={currentPage}

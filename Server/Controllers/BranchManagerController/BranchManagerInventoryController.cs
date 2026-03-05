@@ -109,6 +109,7 @@ namespace Server.Controllers.BranchManagerController
                             ? (string.IsNullOrWhiteSpace(matchedBinInfo.BinStatus) ? "Unknown" : matchedBinInfo.BinStatus)
                             : "Unassigned",
                         SKU = item.SKU ?? string.Empty,
+                        SupplierName = item.SupplierName ?? "Unknown Supplier",
                         ItemBatchName = string.IsNullOrWhiteSpace(item.ProductName)
                             ? item.SKU
                             : item.ProductName,

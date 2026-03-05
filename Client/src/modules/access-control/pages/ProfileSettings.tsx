@@ -1,5 +1,6 @@
 import AcessControllHeader from "@/shared/layout/Header";
 import InboundHeader from "@/modules/inbound/components/InboundHeader";
+import apiClient from "@/services/apiClient";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
@@ -35,7 +36,7 @@ export default function ProfileSettings() {
     [firstName, lastName],
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const existingUserJson = localStorage.getItem("user");
     if (!existingUserJson) {
       showErrorToast("No active user profile found.");
@@ -44,15 +45,18 @@ export default function ProfileSettings() {
 
     try {
       const existingUser = JSON.parse(existingUserJson);
-      const updatedUser = {
-        ...existingUser,
+      const { data } = await apiClient.put("/api/Auth/profile", {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
+      });
+      const updatedUser = {
+        ...existingUser,
+        ...(data?.user ?? {}),
       };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       window.dispatchEvent(new Event("auth-user-updated"));
-      showSuccessToast("Profile updated successfully.");
+      showSuccessToast(data?.message || "Profile updated successfully.");
     } catch {
       showErrorToast("Failed to save profile.");
     }
