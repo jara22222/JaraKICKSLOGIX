@@ -83,8 +83,30 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpContextAccessor();
 
+var envDefaultConnection = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+var appSettingsFallbackConnection = new ConfigurationBuilder()
+    .SetBasePath(builder.Environment.ContentRootPath)
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+    .Build()
+    .GetConnectionString("DefaultConnection");
+
+var resolvedDefaultConnection = !string.IsNullOrWhiteSpace(envDefaultConnection)
+    ? envDefaultConnection.Trim()
+    : builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(resolvedDefaultConnection))
+{
+    resolvedDefaultConnection = appSettingsFallbackConnection;
+}
+
+if (string.IsNullOrWhiteSpace(resolvedDefaultConnection))
+{
+    throw new InvalidOperationException(
+        "No SQL connection string configured. Set ConnectionStrings__DefaultConnection or appsettings.json ConnectionStrings:DefaultConnection.");
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(resolvedDefaultConnection));
 
 builder.Services.AddIdentity<Users, IdentityRole>(options => {
     options.Password.RequireDigit = true;
