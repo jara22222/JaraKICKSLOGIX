@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Server.Data; 
@@ -123,6 +124,28 @@ if (string.IsNullOrWhiteSpace(resolvedDefaultConnection))
 {
     throw new InvalidOperationException(
         "No SQL connection string configured. Set ConnectionStrings__DefaultConnection or appsettings.json ConnectionStrings:DefaultConnection.");
+}
+
+try
+{
+    var sqlBuilder = new SqlConnectionStringBuilder(resolvedDefaultConnection)
+    {
+        Encrypt = true
+    };
+
+    var trustServerCertificate = builder.Configuration.GetValue<bool>("Database:TrustServerCertificate");
+    if (trustServerCertificate)
+    {
+        sqlBuilder.TrustServerCertificate = true;
+    }
+
+    resolvedDefaultConnection = sqlBuilder.ConnectionString;
+}
+catch (Exception ex)
+{
+    throw new InvalidOperationException(
+        "The configured SQL connection string is invalid. Verify ConnectionStrings__DefaultConnection format.",
+        ex);
 }
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
