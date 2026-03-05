@@ -4,13 +4,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore; // Required for IdentityDbContext
 using Microsoft.EntityFrameworkCore; // Required for DbContextOptions
 using Server.Models;
 
 namespace Server.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<Users>
+    public class ApplicationDbContext : IdentityDbContext<Users>, IDataProtectionKeyContext
     {
         private readonly IHttpContextAccessor? _httpContextAccessor;
 
@@ -28,6 +29,7 @@ namespace Server.Data
         public DbSet<StockMovement> StockMovements { get; set; }
         public DbSet<BranchNotification> BranchNotifications { get; set; }
         public DbSet<BranchPasswordResetRequest> BranchPasswordResetRequests { get; set; }
+        public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             // Always call the base method first for Identity tables
