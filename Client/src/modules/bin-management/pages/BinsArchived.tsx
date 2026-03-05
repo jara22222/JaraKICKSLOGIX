@@ -10,8 +10,10 @@ import {
 } from "@/modules/bin-management/services/binLocation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RotateCcw, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ConfirmationModal from "@/shared/components/ConfirmationModal";
+import { HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/signalr";
+import { getHubUrl } from "@/shared/config/api";
 
 const HEADERS = [
   "Bin ID",
@@ -37,6 +39,62 @@ export default function BinsArchived() {
     queryKey: ["branchmanager-archived-bins"],
     queryFn: getArchivedBinLocations,
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token") ?? "";
+    if (!token) return;
+
+    let isDisposed = false;
+    const refreshBins = () => {
+      void queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
+      void queryClient.invalidateQueries({ queryKey: ["branchmanager-archived-bins"] });
+    };
+
+    const connection = new HubConnectionBuilder()
+      .withUrl(getHubUrl("branch-notificationHub"), {
+        accessTokenFactory: () => token,
+        withCredentials: false,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.None)
+      .build();
+
+    connection.on("BinLocationUpdated", refreshBins);
+    connection.on("PutAwayTaskUpdated", refreshBins);
+    connection.on("InboundQueueUpdated", refreshBins);
+    connection.on("InboundShipmentApproved", refreshBins);
+    connection.on("InboundShipmentSubmitted", refreshBins);
+
+    const startConnection = async (delayMs = 1000) => {
+      if (isDisposed) return;
+      try {
+        await connection.start();
+      } catch {
+        if (isDisposed) return;
+        const nextDelay = Math.min(delayMs * 2, 10000);
+        setTimeout(() => {
+          void startConnection(nextDelay);
+        }, delayMs);
+      }
+    };
+
+    void startConnection();
+
+    return () => {
+      isDisposed = true;
+      connection.off("BinLocationUpdated", refreshBins);
+      connection.off("PutAwayTaskUpdated", refreshBins);
+      connection.off("InboundQueueUpdated", refreshBins);
+      connection.off("InboundShipmentApproved", refreshBins);
+      connection.off("InboundShipmentSubmitted", refreshBins);
+      if (
+        connection.state === HubConnectionState.Connected ||
+        connection.state === HubConnectionState.Reconnecting
+      ) {
+        void connection.stop().catch(() => undefined);
+      }
+    };
+  }, [queryClient]);
 
   const restoreMutation = useMutation({
     mutationFn: restoreBinLocation,

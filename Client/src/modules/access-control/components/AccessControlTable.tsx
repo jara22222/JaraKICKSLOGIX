@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { Archive, Pencil, X } from "lucide-react";
 import Pagination from "@/shared/components/Pagination";
 import ExportToolbar from "@/shared/components/ExportToolbar";
@@ -11,6 +12,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import ConfirmationModal from "@/shared/components/ConfirmationModal";
+import { HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/signalr";
+import { getHubUrl } from "@/shared/config/api";
 
 const CSV_PDF_HEADERS = [
   "Name",
@@ -48,6 +51,56 @@ export default function AccessControlTable() {
   const [editRole, setEditRole] = useState("");
   const [editBranch, setEditBranch] = useState("");
   const [editStatus, setEditStatus] = useState("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("token") ?? "";
+    if (!token) return;
+
+    let isDisposed = false;
+    const refreshUsers = () => {
+      void queryClient.invalidateQueries({ queryKey: ["branch-employees"] });
+      void queryClient.invalidateQueries({ queryKey: ["branch-archived-employees"] });
+    };
+
+    const connection = new HubConnectionBuilder()
+      .withUrl(getHubUrl("branchAccount-managerHub"), {
+        accessTokenFactory: () => token,
+        withCredentials: false,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.None)
+      .build();
+
+    connection.on("ReceiveNewBranchUser", refreshUsers);
+    connection.on("BranchUserStatusChanged", refreshUsers);
+
+    const startConnection = async (delayMs = 1000) => {
+      if (isDisposed) return;
+      try {
+        await connection.start();
+      } catch {
+        if (isDisposed) return;
+        const nextDelay = Math.min(delayMs * 2, 10000);
+        setTimeout(() => {
+          void startConnection(nextDelay);
+        }, delayMs);
+      }
+    };
+
+    void startConnection();
+
+    return () => {
+      isDisposed = true;
+      connection.off("ReceiveNewBranchUser", refreshUsers);
+      connection.off("BranchUserStatusChanged", refreshUsers);
+      if (
+        connection.state === HubConnectionState.Connected ||
+        connection.state === HubConnectionState.Reconnecting
+      ) {
+        void connection.stop().catch(() => undefined);
+      }
+    };
+  }, [queryClient]);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["branch-employees"],
