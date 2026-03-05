@@ -40,6 +40,9 @@ namespace Server.Models
         [MaxLength(30)]
         public string WorkflowStatus { get; set; } = "PendingPutAway";
 
+        [MaxLength(80)]
+        public string Branch { get; set; } = "UNASSIGNED";
+
         [MaxLength(128)]
         public string? BinId { get; set; }
         public virtual BinLocation? BinLocation { get; set; }

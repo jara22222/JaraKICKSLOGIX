@@ -32,11 +32,20 @@ namespace Server.Controllers.DispatchController
         [HttpGet("approved-orders")]
         public async Task<ActionResult<List<DispatchOrderDto>>> GetApprovedOrdersAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<DispatchOrderDto>());
+            }
+
             var orders = await _context.Orders
                 .Where(order =>
-                    order.Status == "Approved" ||
+                    order.Branch == currentBranch &&
+                    (order.Status == "Approved" ||
                     order.Status == "DispatchClaimed" ||
-                    order.Status == "ItemScanned")
+                    order.Status == "ItemScanned"))
                 .OrderByDescending(order => order.CreatedAt)
                 .Select(order => new DispatchOrderDto
                 {
@@ -47,6 +56,7 @@ namespace Server.Controllers.DispatchController
                         .Where(item =>
                             item.SKU == order.SKU &&
                             item.Size == order.Size &&
+                            item.Branch == order.Branch &&
                             item.QuantityOnHand > 0 &&
                             !string.IsNullOrWhiteSpace(item.BinId))
                         .OrderBy(item => item.DateReceived)
@@ -131,10 +141,18 @@ namespace Server.Controllers.DispatchController
         [HttpPut("claim/{orderId}")]
         public async Task<ActionResult<ApiMessageDto>> ClaimAsync(string orderId)
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
             var order = await _context.Orders.FirstOrDefaultAsync(item => item.OrderId == orderId);
             if (order == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Order not found." });
+            }
+            if (string.IsNullOrWhiteSpace(currentBranch) ||
+                !string.Equals(order.Branch, currentBranch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
             }
 
             if (order.Status != "Approved")
@@ -153,10 +171,18 @@ namespace Server.Controllers.DispatchController
         [HttpPut("scan-item/{orderId}")]
         public async Task<ActionResult<ApiMessageDto>> ScanItemAsync(string orderId, [FromBody] QrScanDto dto)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == userId);
+            var branch = currentUser?.Branch ?? string.Empty;
             var order = await _context.Orders.FirstOrDefaultAsync(item => item.OrderId == orderId);
             if (order == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Order not found." });
+            }
+            if (string.IsNullOrWhiteSpace(branch) ||
+                !string.Equals(order.Branch, branch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
             }
 
             if (order.Status != "DispatchClaimed")
@@ -175,7 +201,11 @@ namespace Server.Controllers.DispatchController
             }
 
             var product = await _context.Inventory
-                .Where(item => item.SKU == order.SKU && item.Size == order.Size && item.QuantityOnHand > 0)
+                .Where(item =>
+                    item.SKU == order.SKU &&
+                    item.Size == order.Size &&
+                    item.Branch == branch &&
+                    item.QuantityOnHand > 0)
                 .OrderBy(item => item.DateReceived)
                 .FirstOrDefaultAsync();
 
@@ -193,17 +223,15 @@ namespace Server.Controllers.DispatchController
             order.Status = "ToVAS";
             order.UpdatedAt = DateTime.UtcNow;
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == userId);
             var userName = User.Identity?.Name ?? "DispatchClerk";
-            var branch = currentUser?.Branch ?? "N/A";
+            var branchLabel = string.IsNullOrWhiteSpace(branch) ? "N/A" : branch;
 
             _context.StockMovements.Add(new StockMovement
             {
                 ProductId = product.ProductId,
                 OrderId = order.OrderId,
                 BinId = product.BinId,
-                Branch = branch,
+                Branch = branchLabel,
                 Action = "DispatchToVAS",
                 FromStatus = "DispatchClaimed",
                 ToStatus = "ToVAS",
@@ -218,19 +246,19 @@ namespace Server.Controllers.DispatchController
             {
                 UserId = userId ?? "N/A",
                 Action = "Dispatch",
-                Branch = branch,
+                Branch = branchLabel,
                 PerformedBy = userName,
                 Description = $"{userName} auto-deducted qty {order.Quantity} for order {order.OrderId} after item QR verification.",
                 DatePerformed = DateTime.UtcNow
             });
 
-            await PushLowStockNotificationIfNeeded(product, branch);
+            await PushLowStockNotificationIfNeeded(product, branchLabel);
             await _context.SaveChangesAsync();
             await BroadcastOutboundQueueUpdatedAsync(order);
-            await _notificationHub.Clients.All.SendAsync("VASQueueUpdated", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "VASQueueUpdated", new
             {
                 orderId = order.OrderId,
-                branch = branch,
+                branch = branchLabel,
                 status = order.Status,
                 updatedAt = order.UpdatedAt ?? DateTime.UtcNow
             });
@@ -247,10 +275,18 @@ namespace Server.Controllers.DispatchController
             [FromBody] ConfirmDispatchQtyDto dto
         )
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == userId);
+            var branch = currentUser?.Branch ?? string.Empty;
             var order = await _context.Orders.FirstOrDefaultAsync(item => item.OrderId == orderId);
             if (order == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Order not found." });
+            }
+            if (string.IsNullOrWhiteSpace(branch) ||
+                !string.Equals(order.Branch, branch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
             }
 
             if (order.Status != "ItemScanned")
@@ -264,7 +300,11 @@ namespace Server.Controllers.DispatchController
             }
 
             var product = await _context.Inventory
-                .Where(item => item.SKU == order.SKU && item.Size == order.Size && item.QuantityOnHand > 0)
+                .Where(item =>
+                    item.SKU == order.SKU &&
+                    item.Size == order.Size &&
+                    item.Branch == branch &&
+                    item.QuantityOnHand > 0)
                 .OrderBy(item => item.DateReceived)
                 .FirstOrDefaultAsync();
 
@@ -283,17 +323,15 @@ namespace Server.Controllers.DispatchController
             order.Status = "ToVAS";
             order.UpdatedAt = DateTime.UtcNow;
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == userId);
             var userName = User.Identity?.Name ?? "DispatchClerk";
-            var branch = currentUser?.Branch ?? "N/A";
+            var branchLabel = string.IsNullOrWhiteSpace(branch) ? "N/A" : branch;
 
             _context.StockMovements.Add(new StockMovement
             {
                 ProductId = product.ProductId,
                 OrderId = order.OrderId,
                 BinId = product.BinId,
-                Branch = branch,
+                Branch = branchLabel,
                 Action = "DispatchToVAS",
                 FromStatus = "ItemScanned",
                 ToStatus = "ToVAS",
@@ -308,19 +346,19 @@ namespace Server.Controllers.DispatchController
             {
                 UserId = userId ?? "N/A",
                 Action = "Dispatch",
-                Branch = branch,
+                Branch = branchLabel,
                 PerformedBy = userName,
                 Description = $"{userName} dispatched order {order.OrderId} to VAS with qty {dto.Quantity}.",
                 DatePerformed = DateTime.UtcNow
             });
 
-            await PushLowStockNotificationIfNeeded(product, branch);
+            await PushLowStockNotificationIfNeeded(product, branchLabel);
             await _context.SaveChangesAsync();
             await BroadcastOutboundQueueUpdatedAsync(order);
-            await _notificationHub.Clients.All.SendAsync("VASQueueUpdated", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "VASQueueUpdated", new
             {
                 orderId = order.OrderId,
-                branch = branch,
+                branch = branchLabel,
                 status = order.Status,
                 updatedAt = order.UpdatedAt ?? DateTime.UtcNow
             });
@@ -329,7 +367,7 @@ namespace Server.Controllers.DispatchController
 
         private async Task BroadcastOutboundQueueUpdatedAsync(Order order)
         {
-            await _notificationHub.Clients.All.SendAsync("OutboundQueueUpdated", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "OutboundQueueUpdated", new
             {
                 orderId = order.OrderId,
                 branch = order.Branch ?? "N/A",
@@ -376,7 +414,7 @@ namespace Server.Controllers.DispatchController
                     CreatedAt = DateTime.UtcNow
                 });
 
-                await _notificationHub.Clients.All.SendAsync("LowStockAlert", new
+                await _notificationHub.SendToBranchAndSuperAdminAsync(branch, "LowStockAlert", new
                 {
                     ManagerId = manager.Id,
                     branch,

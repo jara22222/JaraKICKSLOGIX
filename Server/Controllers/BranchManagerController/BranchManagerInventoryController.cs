@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.DTO;
 using Server.DTO.WorkflowDto;
+using Server.Hubs.BranchManagerHub;
 using Server.Models;
+using Server.Utilities;
 using System.Security.Claims;
 
 namespace Server.Controllers.BranchManagerController
@@ -14,11 +17,15 @@ namespace Server.Controllers.BranchManagerController
     public class BranchManagerInventoryController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHubContext<BranchNotificationHub> _notificationHub;
         private const int BatchUnitSize = 20;
 
-        public BranchManagerInventoryController(ApplicationDbContext context)
+        public BranchManagerInventoryController(
+            ApplicationDbContext context,
+            IHubContext<BranchNotificationHub> notificationHub)
         {
             _context = context;
+            _notificationHub = notificationHub;
         }
 
         [Authorize(Roles = "BranchManager,SuperAdmin")]
@@ -173,6 +180,22 @@ namespace Server.Controllers.BranchManagerController
             });
 
             await _context.SaveChangesAsync();
+            await _notificationHub.SendToBranchAndSuperAdminAsync(branch, "InboundQueueUpdated", new
+            {
+                productId = product.ProductId,
+                sku = product.SKU,
+                size = product.Size,
+                status = product.WorkflowStatus,
+                updatedAt = DateTime.UtcNow
+            });
+            await _notificationHub.SendToBranchAndSuperAdminAsync(branch, "LowStockAlert", new
+            {
+                branch,
+                product.SKU,
+                product.Size,
+                product.QuantityOnHand,
+                threshold
+            });
             return Ok(new ApiMessageDto
             {
                 Message = "Low-stock replenishment approved successfully."

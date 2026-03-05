@@ -55,7 +55,8 @@ namespace Server.Controllers.ReceiverController
                     selectedBin = await _context.BinLocations.FirstOrDefaultAsync(bin =>
                         bin.BinId == selectedBinId &&
                         bin.BinStatus != "Archived" &&
-                        bin.BinSize == normalizedSize
+                        bin.BinSize == normalizedSize &&
+                        bin.Branch == branchName
                     );
 
                     if (selectedBin == null)
@@ -81,6 +82,7 @@ namespace Server.Controllers.ReceiverController
                         .Where(bin =>
                             bin.BinStatus != "Archived" &&
                             bin.BinSize == normalizedSize &&
+                            bin.Branch == branchName &&
                             !_context.Inventory.Any(item =>
                                 item.BinId == bin.BinId &&
                                 item.IsBinAssigned &&
@@ -101,6 +103,7 @@ namespace Server.Controllers.ReceiverController
                         .Where(bin =>
                             bin.BinStatus != "Archived" &&
                             bin.BinSize == normalizedSize &&
+                            bin.Branch == branchName &&
                             !_context.Inventory.Any(item =>
                                 item.BinId == bin.BinId &&
                                 item.IsBinAssigned &&
@@ -144,6 +147,7 @@ namespace Server.Controllers.ReceiverController
                     ? null
                     : await _context.Inventory.FirstOrDefaultAsync(item =>
                         item.ProductId == shipmentId &&
+                        item.Branch == branchName &&
                         item.WorkflowStatus == "PendingReceive"
                     );
 
@@ -194,6 +198,7 @@ namespace Server.Controllers.ReceiverController
                     : product.QrString;
                 product.CriticalThreshold = GetThresholdBySize(normalizedSize);
                 product.WorkflowStatus = "PendingPutAway";
+                product.Branch = branchName;
                 product.BinId = selectedBin.BinId;
                 product.IsBinAssigned = true;
                 product.UpdatedAt = DateTime.UtcNow;
@@ -246,7 +251,7 @@ namespace Server.Controllers.ReceiverController
 
                 await _context.SaveChangesAsync();
 
-                await _notificationHub.Clients.All.SendAsync("PutAwayTaskUpdated", new
+                await _notificationHub.SendToBranchAndSuperAdminAsync(branchName, "PutAwayTaskUpdated", new
                 {
                     productId = product.ProductId,
                     sku = normalizedSku,
@@ -321,8 +326,19 @@ namespace Server.Controllers.ReceiverController
         [HttpGet("assigned-items")]
         public async Task<ActionResult<List<ReceiverAssignedItemDto>>> GetAssignedItemsAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<ReceiverAssignedItemDto>());
+            }
+
             var items = await _context.Inventory
-                .Where(item => item.IsBinAssigned && !string.IsNullOrWhiteSpace(item.BinId))
+                .Where(item =>
+                    item.IsBinAssigned &&
+                    !string.IsNullOrWhiteSpace(item.BinId) &&
+                    item.Branch == currentBranch)
                 .Join(
                     _context.BinLocations,
                     item => item.BinId,
@@ -353,8 +369,18 @@ namespace Server.Controllers.ReceiverController
         [HttpGet("incoming-shipments")]
         public async Task<ActionResult<List<InboundIncomingShipmentDto>>> GetIncomingShipmentsAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<InboundIncomingShipmentDto>());
+            }
+
             var incoming = await _context.Inventory
-                .Where(item => item.WorkflowStatus == "PendingReceive")
+                .Where(item =>
+                    item.WorkflowStatus == "PendingReceive" &&
+                    item.Branch == currentBranch)
                 .OrderByDescending(item => item.DateReceived)
                 .Select(item => new InboundIncomingShipmentDto
                 {
@@ -379,8 +405,16 @@ namespace Server.Controllers.ReceiverController
         [HttpGet("receipts")]
         public async Task<ActionResult<List<InboundReceiptDto>>> GetReceiptsAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<InboundReceiptDto>());
+            }
+
             var products = await _context.Inventory
-                .Where(item => item.IsBinAssigned)
+                .Where(item => item.IsBinAssigned && item.Branch == currentBranch)
                 .OrderByDescending(item => item.DateReceived)
                 .Take(300)
                 .ToListAsync();
@@ -452,6 +486,12 @@ namespace Server.Controllers.ReceiverController
                     Message = "User identity is missing."
                 });
             }
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new InboundKpiDto());
+            }
 
             var now = DateTime.UtcNow;
             var todayUtc = now.Date;
@@ -461,20 +501,27 @@ namespace Server.Controllers.ReceiverController
             var inTransitStatuses = new[] { "InTransit", "In Transit" };
 
             var pendingAcceptanceCount = await _context.Inventory
-                .Where(item => pendingStatuses.Contains(item.WorkflowStatus))
+                .Where(item =>
+                    pendingStatuses.Contains(item.WorkflowStatus) &&
+                    item.Branch == currentBranch)
                 .CountAsync();
 
             var totalUnitsIncoming = await _context.Inventory
-                .Where(item => pendingStatuses.Contains(item.WorkflowStatus))
+                .Where(item =>
+                    pendingStatuses.Contains(item.WorkflowStatus) &&
+                    item.Branch == currentBranch)
                 .SumAsync(item => (int?)item.QuantityOnHand) ?? 0;
 
             var inTransitCount = await _context.Inventory
-                .Where(item => inTransitStatuses.Contains(item.WorkflowStatus))
+                .Where(item =>
+                    inTransitStatuses.Contains(item.WorkflowStatus) &&
+                    item.Branch == currentBranch)
                 .CountAsync();
 
             var storedTodayCount = await _context.StockMovements
                 .Where(movement =>
                     movement.Action == "StoreInBin" &&
+                    movement.Branch == currentBranch &&
                     movement.OccurredAt >= todayUtc &&
                     movement.OccurredAt < tomorrowUtc)
                 .CountAsync();
@@ -482,6 +529,7 @@ namespace Server.Controllers.ReceiverController
             var actionsTodayCount = await _context.StockMovements
                 .Where(movement =>
                     movement.PerformedByUserId == currentUserId &&
+                    movement.Branch == currentBranch &&
                     movement.OccurredAt >= todayUtc &&
                     movement.OccurredAt < tomorrowUtc)
                 .CountAsync();

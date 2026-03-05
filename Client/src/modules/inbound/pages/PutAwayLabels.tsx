@@ -198,6 +198,7 @@ export default function PutAwayLabels() {
       void refreshStats();
       void queryClient.invalidateQueries({ queryKey: ["inbound-incoming-shipments"] });
       void queryClient.invalidateQueries({ queryKey: ["receiver-assigned-items"] });
+      void queryClient.invalidateQueries({ queryKey: ["receiver-bin-locations"] });
     },
     onError: (error: any) => {
       showErrorToast(error?.response?.data?.message || "Failed to assign bin.");
@@ -236,6 +237,7 @@ export default function PutAwayLabels() {
       void refreshStats();
       void queryClient.invalidateQueries({ queryKey: ["receiver-assigned-items"] });
       void queryClient.invalidateQueries({ queryKey: ["inbound-receipts"] });
+      void queryClient.invalidateQueries({ queryKey: ["receiver-bin-locations"] });
     },
     onError: (error: any) => {
       showErrorToast(error?.response?.data?.message || "Bin QR verification failed.");
@@ -405,12 +407,14 @@ export default function PutAwayLabels() {
       void queryClient.invalidateQueries({ queryKey: ["inbound-receipts"] });
       void queryClient.invalidateQueries({ queryKey: ["inbound-kpis"] });
       void queryClient.invalidateQueries({ queryKey: ["inbound-activity-log"] });
+      void queryClient.invalidateQueries({ queryKey: ["receiver-bin-locations"] });
     };
 
     connection.on("InboundShipmentApproved", refreshLabelingQueues);
     connection.on("InboundShipmentSubmitted", refreshLabelingQueues);
     connection.on("InboundQueueUpdated", refreshLabelingQueues);
     connection.on("PutAwayTaskUpdated", refreshLabelingQueues);
+    connection.on("BinLocationUpdated", refreshLabelingQueues);
 
     const startConnection = async () => {
       if (isDisposed) return;
@@ -433,6 +437,7 @@ export default function PutAwayLabels() {
       connection.off("InboundShipmentSubmitted", refreshLabelingQueues);
       connection.off("InboundQueueUpdated", refreshLabelingQueues);
       connection.off("PutAwayTaskUpdated", refreshLabelingQueues);
+      connection.off("BinLocationUpdated", refreshLabelingQueues);
       if (
         connection.state === HubConnectionState.Connected ||
         connection.state === HubConnectionState.Reconnecting

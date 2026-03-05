@@ -1,15 +1,12 @@
 using Microsoft.AspNetCore.SignalR;
 using Server.Utilities;
-namespace Server.Hubs.BranchManagerHub
+
+namespace Server.Hubs
 {
-    public class BranchAccountHub : Hub
+    public abstract class SuperAdminScopedHub : Hub
     {
         public override async Task OnConnectedAsync()
         {
-            var branch = Context.User?.FindFirst("Branch")?.Value
-                ?? Context.User?.FindFirst("branch")?.Value;
-            await Groups.AddToGroupAsync(Context.ConnectionId, SignalRGroupHelper.BranchGroup(branch));
-
             if (Context.User?.IsInRole("SuperAdmin") == true)
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, SignalRGroupHelper.SuperAdminGroup);

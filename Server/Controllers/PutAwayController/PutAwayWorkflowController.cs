@@ -7,6 +7,7 @@ using Server.DTO;
 using Server.DTO.WorkflowDto;
 using Server.Hubs.BranchManagerHub;
 using Server.Models;
+using Server.Utilities;
 using System.Security.Claims;
 
 namespace Server.Controllers.PutAwayController
@@ -32,12 +33,19 @@ namespace Server.Controllers.PutAwayController
         public async Task<ActionResult<List<PutAwayTaskDto>>> GetPendingProductsAsync()
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<PutAwayTaskDto>());
+            }
 
             var tasks = await _context.Inventory
                 .Where(product =>
-                    product.WorkflowStatus == "PendingPutAway" ||
+                    product.Branch == currentBranch &&
+                    (product.WorkflowStatus == "PendingPutAway" ||
                     product.WorkflowStatus == "ClaimedForPutAway" ||
-                    product.WorkflowStatus == "ItemScanned")
+                    product.WorkflowStatus == "ItemScanned"))
                 .Join(
                     _context.BinLocations,
                     product => product.BinId,
@@ -99,10 +107,17 @@ namespace Server.Controllers.PutAwayController
         public async Task<ActionResult<ApiMessageDto>> ClaimTaskAsync(string productId)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
             var product = await _context.Inventory.FirstOrDefaultAsync(item => item.ProductId == productId);
             if (product == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Product task not found." });
+            }
+            if (string.IsNullOrWhiteSpace(currentBranch) ||
+                !string.Equals(product.Branch, currentBranch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
             }
 
             if (product.WorkflowStatus != "PendingPutAway")
@@ -158,10 +173,17 @@ namespace Server.Controllers.PutAwayController
         public async Task<ActionResult<ApiMessageDto>> ScanItemAsync(string productId, [FromBody] QrScanDto dto)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
             var product = await _context.Inventory.FirstOrDefaultAsync(item => item.ProductId == productId);
             if (product == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Product task not found." });
+            }
+            if (string.IsNullOrWhiteSpace(currentBranch) ||
+                !string.Equals(product.Branch, currentBranch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
             }
 
             if (product.WorkflowStatus != "ClaimedForPutAway")
@@ -202,10 +224,17 @@ namespace Server.Controllers.PutAwayController
         public async Task<ActionResult<ApiMessageDto>> ScanBinAsync(string productId, [FromBody] QrScanDto dto)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
             var product = await _context.Inventory.FirstOrDefaultAsync(item => item.ProductId == productId);
             if (product == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Product task not found." });
+            }
+            if (string.IsNullOrWhiteSpace(currentBranch) ||
+                !string.Equals(product.Branch, currentBranch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
             }
 
             if (product.WorkflowStatus != "ItemScanned")
@@ -232,6 +261,10 @@ namespace Server.Controllers.PutAwayController
             if (targetBin == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Assigned bin not found." });
+            }
+            if (!string.Equals(targetBin.Branch, currentBranch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
             }
 
             if (!IsMatchingBinQr(targetBin, dto.QrValue))
@@ -316,7 +349,7 @@ namespace Server.Controllers.PutAwayController
                 DatePerformed = DateTime.UtcNow
             });
 
-            await _notificationHub.Clients.All.SendAsync("PutAwayTaskUpdated", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(branchName, "PutAwayTaskUpdated", new
             {
                 productId = product.ProductId,
                 sku = product.SKU,

@@ -7,6 +7,7 @@ using Server.DTO;
 using Server.DTO.WorkflowDto;
 using Server.Hubs.BranchManagerHub;
 using Server.Models;
+using Server.Utilities;
 using System.Security.Claims;
 
 namespace Server.Controllers.VASController
@@ -30,11 +31,20 @@ namespace Server.Controllers.VASController
         [HttpGet("pending-items")]
         public async Task<ActionResult<List<DispatchOrderDto>>> GetPendingItemsAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<DispatchOrderDto>());
+            }
+
             var items = await _context.Orders
                 .Where(order =>
-                    order.Status == "ToVAS" ||
+                    order.Branch == currentBranch &&
+                    (order.Status == "ToVAS" ||
                     order.Status == "ToVas" ||
-                    order.Status == "Packing")
+                    order.Status == "Packing"))
                 .OrderByDescending(order => order.CreatedAt)
                 .Select(order => new DispatchOrderDto
                 {
@@ -57,8 +67,18 @@ namespace Server.Controllers.VASController
         [HttpGet("outbound-ready-items")]
         public async Task<ActionResult<List<DispatchOrderDto>>> GetOutboundReadyItemsAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<DispatchOrderDto>());
+            }
+
             var items = await _context.Orders
-                .Where(order => order.Status == "OutboundReady")
+                .Where(order =>
+                    order.Status == "OutboundReady" &&
+                    order.Branch == currentBranch)
                 .OrderByDescending(order => order.UpdatedAt ?? order.CreatedAt)
                 .Select(order => new DispatchOrderDto
                 {
@@ -77,12 +97,22 @@ namespace Server.Controllers.VASController
             return Ok(items);
         }
 
-        [AllowAnonymous]
+        [Authorize]
         [HttpGet("public-outbound-ready-items")]
         public async Task<ActionResult<List<DispatchOrderDto>>> GetPublicOutboundReadyItemsAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<DispatchOrderDto>());
+            }
+
             var items = await _context.Orders
-                .Where(order => order.Status == "OutboundReady")
+                .Where(order =>
+                    order.Status == "OutboundReady" &&
+                    order.Branch == currentBranch)
                 .OrderByDescending(order => order.UpdatedAt ?? order.CreatedAt)
                 .Take(500)
                 .Select(order => new DispatchOrderDto
@@ -171,6 +201,14 @@ namespace Server.Controllers.VASController
             {
                 return NotFound(new ApiMessageDto { Message = "Order not found." });
             }
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == userId);
+            var branch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(branch) ||
+                !string.Equals(order.Branch, branch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
 
             if (!IsVasScannableStatus(order.Status))
             {
@@ -186,15 +224,13 @@ namespace Server.Controllers.VASController
             order.Status = "OutboundReady";
             order.UpdatedAt = DateTime.UtcNow;
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userName = User.Identity?.Name ?? "VASPersonnel";
-            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == userId);
-            var branch = currentUser?.Branch ?? "N/A";
+            var branchLabel = string.IsNullOrWhiteSpace(branch) ? "N/A" : branch;
 
             _context.StockMovements.Add(new StockMovement
             {
                 OrderId = order.OrderId,
-                Branch = branch,
+                Branch = branchLabel,
                 Action = "VASScanOut",
                 FromStatus = fromStatus,
                 ToStatus = "OutboundReady",
@@ -209,17 +245,17 @@ namespace Server.Controllers.VASController
             {
                 UserId = userId ?? "N/A",
                 Action = "VASScanOut",
-                Branch = branch,
+                Branch = branchLabel,
                 PerformedBy = userName,
                 Description = $"{userName} completed VAS scan for order {order.OrderId} and marked it OutboundReady.",
                 DatePerformed = DateTime.UtcNow
             });
 
             await _context.SaveChangesAsync();
-            await _notificationHub.Clients.All.SendAsync("VASQueueUpdated", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "VASQueueUpdated", new
             {
                 orderId = order.OrderId,
-                branch = branch,
+                branch = branchLabel,
                 status = order.Status,
                 updatedAt = order.UpdatedAt ?? DateTime.UtcNow
             });
@@ -235,6 +271,14 @@ namespace Server.Controllers.VASController
             {
                 return NotFound(new ApiMessageDto { Message = "Order not found." });
             }
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == userId);
+            var branch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(branch) ||
+                !string.Equals(order.Branch, branch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
 
             if (!IsVasScannableStatus(order.Status))
             {
@@ -245,15 +289,13 @@ namespace Server.Controllers.VASController
             order.Status = "OutboundReady";
             order.UpdatedAt = DateTime.UtcNow;
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userName = User.Identity?.Name ?? "VASPersonnel";
-            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == userId);
-            var branch = currentUser?.Branch ?? "N/A";
+            var branchLabel = string.IsNullOrWhiteSpace(branch) ? "N/A" : branch;
 
             _context.StockMovements.Add(new StockMovement
             {
                 OrderId = order.OrderId,
-                Branch = branch,
+                Branch = branchLabel,
                 Action = "VASDone",
                 FromStatus = fromStatus,
                 ToStatus = "OutboundReady",
@@ -268,17 +310,17 @@ namespace Server.Controllers.VASController
             {
                 UserId = userId ?? "N/A",
                 Action = "VASDone",
-                Branch = branch,
+                Branch = branchLabel,
                 PerformedBy = userName,
                 Description = $"{userName} completed VAS for order {order.OrderId} and moved to OutboundReady.",
                 DatePerformed = DateTime.UtcNow
             });
 
             await _context.SaveChangesAsync();
-            await _notificationHub.Clients.All.SendAsync("VASQueueUpdated", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "VASQueueUpdated", new
             {
                 orderId = order.OrderId,
-                branch = branch,
+                branch = branchLabel,
                 status = order.Status,
                 updatedAt = order.UpdatedAt ?? DateTime.UtcNow
             });

@@ -8,6 +8,7 @@ using Server.DTO;
 using Server.Models;
 using Server.Services;
 using Server.Data;  
+using Server.Utilities;
 using System.Security.Claims;
 namespace Server.Controllers.SuperAdminController
 {
@@ -68,7 +69,7 @@ namespace Server.Controllers.SuperAdminController
             }
         ).ToListAsync();
 
-        await _hubContext.Clients.All.SendAsync("OnSearchPerformed", results);
+        await _hubContext.SendToSuperAdminAsync("OnSearchPerformed", results);
         
         return Ok(results);
             }

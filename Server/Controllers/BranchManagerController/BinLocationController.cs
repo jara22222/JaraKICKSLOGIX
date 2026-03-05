@@ -268,7 +268,7 @@ namespace Server.Controllers
                 });
 
                 await _context.SaveChangesAsync();
-                await _notificationHub.Clients.All.SendAsync("BinLocationUpdated", new
+                await _notificationHub.SendToBranchAndSuperAdminAsync(branchName, "BinLocationUpdated", new
                 {
                     binId = bin.BinId,
                     status = bin.BinStatus,
@@ -352,7 +352,7 @@ namespace Server.Controllers
                 });
 
                 await _context.SaveChangesAsync();
-                await _notificationHub.Clients.All.SendAsync("BinLocationUpdated", new
+                await _notificationHub.SendToBranchAndSuperAdminAsync(bin.Branch, "BinLocationUpdated", new
                 {
                     binId = bin.BinId,
                     status = bin.BinStatus,
@@ -416,7 +416,7 @@ namespace Server.Controllers
                 });
 
                 await _context.SaveChangesAsync();
-                await _notificationHub.Clients.All.SendAsync("BinLocationUpdated", new
+                await _notificationHub.SendToBranchAndSuperAdminAsync(bin.Branch, "BinLocationUpdated", new
                 {
                     binId = bin.BinId,
                     status = bin.BinStatus,
@@ -466,7 +466,7 @@ namespace Server.Controllers
                 });
 
                 await _context.SaveChangesAsync();
-                await _notificationHub.Clients.All.SendAsync("BinLocationUpdated", new
+                await _notificationHub.SendToBranchAndSuperAdminAsync(bin.Branch, "BinLocationUpdated", new
                 {
                     binId = bin.BinId,
                     status = bin.BinStatus,
@@ -529,6 +529,25 @@ namespace Server.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+                if (updatedCount > 0)
+                {
+                    var affectedBranches = bins
+                        .Select(bin => bin.Branch)
+                        .Where(branch => !string.IsNullOrWhiteSpace(branch))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    foreach (var affectedBranch in affectedBranches)
+                    {
+                        await _notificationHub.SendToBranchAndSuperAdminAsync(affectedBranch, "BinLocationUpdated", new
+                        {
+                            branch = affectedBranch,
+                            action = "NormalizeBinQr",
+                            updatedCount,
+                            updatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
                 return Ok(new ApiMessageDto
                 {
                     Message = updatedCount == 0

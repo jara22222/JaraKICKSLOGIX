@@ -7,6 +7,7 @@ using Server.DTO;
 using Server.Models;
 using Server.Services;
 using Server.Data;  
+using Server.Utilities;
 using System.Security.Claims;
 namespace Server.Controllers
 
@@ -75,7 +76,7 @@ namespace Server.Controllers
                         Status = user.IsActive ?? "N/A",
                         Message = "Branch manager updated."
                     };
-                    await _hubContext.Clients.All.SendAsync("ManagerUpdated", managerHubEvent);
+                    await _hubContext.SendToSuperAdminAsync("ManagerUpdated", managerHubEvent);
                     
                     var currentUserName = User.Identity?.Name ?? "Admin";
 

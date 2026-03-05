@@ -1,14 +1,68 @@
 import { getPublicVASOutboundReadyItems } from "@/modules/vas/services/vasWorkflow";
+import { getHubUrl } from "@/shared/config/api";
+import {
+  HubConnectionBuilder,
+  HubConnectionState,
+  LogLevel,
+} from "@microsoft/signalr";
 import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
+import { useEffect } from "react";
 
 export default function VASReadyBoard() {
+  const queryClient = useQueryClient();
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["vas-public-outbound-ready-items"],
     queryFn: getPublicVASOutboundReadyItems,
     retry: false,
-    refetchInterval: 3000,
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token") ?? "";
+    if (!token) return;
+
+    let isDisposed = false;
+    const connection = new HubConnectionBuilder()
+      .withUrl(getHubUrl("branch-notificationHub"), {
+        accessTokenFactory: () => token,
+        withCredentials: false,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.None)
+      .build();
+
+    const refreshReadyBoard = () =>
+      void queryClient.invalidateQueries({
+        queryKey: ["vas-public-outbound-ready-items"],
+      });
+
+    connection.on("VASQueueUpdated", refreshReadyBoard);
+    connection.on("OutboundQueueUpdated", refreshReadyBoard);
+
+    const startConnection = async () => {
+      if (isDisposed) return;
+      try {
+        await connection.start();
+      } catch {
+        // silent retry is handled by automatic reconnect
+      }
+    };
+
+    void startConnection();
+
+    return () => {
+      isDisposed = true;
+      connection.off("VASQueueUpdated", refreshReadyBoard);
+      connection.off("OutboundQueueUpdated", refreshReadyBoard);
+      if (
+        connection.state === HubConnectionState.Connected ||
+        connection.state === HubConnectionState.Reconnecting
+      ) {
+        void connection.stop().catch(() => undefined);
+      }
+    };
+  }, [queryClient]);
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 p-6 lg:p-8">
@@ -21,7 +75,7 @@ export default function VASReadyBoard() {
                 Outbound Ready Board
               </h1>
               <p className="text-sm text-slate-300">
-                Public display for picking area • Auto-refresh every 3 seconds
+                Ready-board display for picking area with realtime updates
               </p>
             </div>
             <div className="ml-auto text-right">

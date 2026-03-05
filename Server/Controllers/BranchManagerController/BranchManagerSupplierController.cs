@@ -6,6 +6,7 @@ using Server.Data;
 using Server.DTO;
 using Server.DTO.WorkflowDto;
 using Server.Models;
+using System.Security.Claims;
 
 namespace Server.Controllers.BranchManagerController
 {
@@ -58,8 +59,24 @@ namespace Server.Controllers.BranchManagerController
         public async Task<ActionResult<List<BranchManagerSupplierReplenishmentDto>>> GetReplenishmentOrdersAsync()
         {
             var statuses = new[] { "PendingAdminApproval", "PendingReceive", "PendingPutAway" };
-            var orders = await _context.Inventory
+            var baseQuery = _context.Inventory
                 .Where(item => statuses.Contains(item.WorkflowStatus))
+                .AsQueryable();
+
+            if (User.IsInRole("BranchManager"))
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+                var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+                var currentBranch = currentUser?.Branch?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(currentBranch))
+                {
+                    return Ok(new List<BranchManagerSupplierReplenishmentDto>());
+                }
+
+                baseQuery = baseQuery.Where(item => item.Branch == currentBranch);
+            }
+
+            var orders = await baseQuery
                 .OrderByDescending(item => item.DateReceived)
                 .Select(item => new BranchManagerSupplierReplenishmentDto
                 {
