@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import {
   HubConnectionBuilder,
   HubConnectionState,
+  type HubConnection,
   LogLevel,
 } from "@microsoft/signalr";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,7 +13,9 @@ export const useInboundManagementRealtime = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("token") ?? "";
+    if (!token) return;
     let isDisposed = false;
+    const retryTimers = new Set<ReturnType<typeof setTimeout>>();
 
     const connection = new HubConnectionBuilder()
       .withUrl(getHubUrl("branch-notificationHub"), {
@@ -36,36 +39,49 @@ export const useInboundManagementRealtime = () => {
       void queryClient.invalidateQueries({
         queryKey: ["inbound-activity-log"],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ["inbound-kpis"],
+      });
     };
 
     connection.on("InboundShipmentSubmitted", refreshInboundData);
     connection.on("InboundShipmentApproved", refreshInboundData);
+    connection.on("InboundQueueUpdated", refreshInboundData);
+    connection.on("PutAwayTaskUpdated", refreshInboundData);
+    connection.on("BinLocationUpdated", refreshInboundData);
 
-    const startConnection = async () => {
+    const startConnectionWithRetry = (hub: HubConnection, delayMs = 1000) => {
       if (isDisposed) return;
-      try {
-        await connection.start();
-      } catch (error) {
+      void hub.start().catch(() => {
         if (isDisposed) return;
-        const message = error instanceof Error ? error.message.toLowerCase() : "";
-        if (message.includes("stopped during negotiation") || message.includes("aborted")) {
-          return;
-        }
-      }
+        const nextDelay = Math.min(delayMs * 2, 10000);
+        const timer = setTimeout(() => {
+          retryTimers.delete(timer);
+          startConnectionWithRetry(hub, nextDelay);
+        }, delayMs);
+        retryTimers.add(timer);
+      });
     };
 
-    void startConnection();
+    startConnectionWithRetry(connection);
 
     return () => {
       isDisposed = true;
       connection.off("InboundShipmentSubmitted", refreshInboundData);
       connection.off("InboundShipmentApproved", refreshInboundData);
+      connection.off("InboundQueueUpdated", refreshInboundData);
+      connection.off("PutAwayTaskUpdated", refreshInboundData);
+      connection.off("BinLocationUpdated", refreshInboundData);
       if (
         connection.state === HubConnectionState.Connected ||
         connection.state === HubConnectionState.Reconnecting
       ) {
         void connection.stop().catch(() => undefined);
       }
+      for (const timer of retryTimers) {
+        clearTimeout(timer);
+      }
+      retryTimers.clear();
     };
   }, [queryClient]);
 };
