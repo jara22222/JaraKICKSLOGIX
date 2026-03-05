@@ -299,7 +299,6 @@ C:\IT15-KICKSLOGIX\Server\bin\Debug\net10.0\build-check\Server.deps.json
 C:\IT15-KICKSLOGIX\Server\bin\Debug\net10.0\build-check\Server.runtimeconfig.json
 C:\IT15-KICKSLOGIX\Server\bin\Debug\net10.0\build-check\Server.staticwebassets.endpoints.json
 C:\IT15-KICKSLOGIX\Server\bin\Debug\net10.0\Server.staticwebassets.endpoints.json
-C:\IT15-KICKSLOGIX\Server\bin\Debug\net10.0\Server.exe
 C:\IT15-KICKSLOGIX\Server\bin\Debug\net10.0\Server.deps.json
 C:\IT15-KICKSLOGIX\Server\bin\Debug\net10.0\Server.runtimeconfig.json
 C:\IT15-KICKSLOGIX\Server\bin\Debug\net10.0\Server.dll
@@ -809,3 +808,4 @@ C:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\n
 C:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\net10.0\temp-build\Debug\net10.0\Server.deps.json
 C:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\net10.0\temp-build\Debug\net10.0\Server.runtimeconfig.json
 C:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\net10.0\temp-build\Debug\net10.0\bin\Debug\net10.0\temp-build\Debug\net10.0\Server.staticwebassets.endpoints.json
+C:\IT15-KICKSLOGIX\server\bin\Debug\net10.0\Server.exe
