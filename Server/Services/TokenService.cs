@@ -24,6 +24,7 @@ namespace Server.Services
                 new Claim(ClaimTypes.Email, user.Email ?? ""),
                 new Claim("FirstName", user.FirstName),
                 new Claim("LastName", user.LastName),
+                new Claim("Branch", user.Branch ?? string.Empty),
             };
 
             // Add each role as a claim

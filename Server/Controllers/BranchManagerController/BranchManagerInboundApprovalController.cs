@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.DTO;
 using Server.DTO.WorkflowDto;
+using Server.Hubs.BranchManagerHub;
 using Server.Models;
 using System.Security.Claims;
 
@@ -14,10 +16,15 @@ namespace Server.Controllers.BranchManagerController
     public class BranchManagerInboundApprovalController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHubContext<BranchNotificationHub> _notificationHub;
 
-        public BranchManagerInboundApprovalController(ApplicationDbContext context)
+        public BranchManagerInboundApprovalController(
+            ApplicationDbContext context,
+            IHubContext<BranchNotificationHub> notificationHub
+        )
         {
             _context = context;
+            _notificationHub = notificationHub;
         }
 
         [Authorize(Roles = "BranchManager")]
@@ -94,6 +101,18 @@ namespace Server.Controllers.BranchManagerController
             });
 
             await _context.SaveChangesAsync();
+            await _notificationHub.Clients.All.SendAsync("InboundShipmentApproved", new
+            {
+                productId = product.ProductId,
+                status = product.WorkflowStatus
+            });
+            await _notificationHub.Clients.All.SendAsync("InboundQueueUpdated", new
+            {
+                productId = product.ProductId,
+                status = product.WorkflowStatus,
+                branch,
+                updatedAt = product.UpdatedAt ?? DateTime.UtcNow
+            });
 
             return Ok(new ApiMessageDto { Message = "Supplier shipment approved for receiver." });
         }

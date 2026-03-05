@@ -4,3 +4,46 @@ GET {{Server_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+POST {{Server_HostAddress}}/api/BinLocation/normalize-bin-qr
+Authorization: Bearer {{token}}
+
+###
+
+POST {{Server_HostAddress}}/api/InboundSubmission/submit-item
+Content-Type: application/json
+
+{
+  "supplierName": "Nike Vendor PH",
+  "productName": "Air Zoom Alpha",
+  "quantity": 25
+}
+
+###
+
+# Supplier to outbound order submission (goes to Branch Admin approval first)
+POST {{Server_HostAddress}}/api/SupplierOrder/submit-order
+Content-Type: application/json
+
+{
+  "productName": "Air Zoom Alpha",
+  "sku": "AZA-1001",
+  "quantity": 2,
+  "courierId": "JNT-77821",
+  "customerName": "Juan Dela Cruz",
+  "customerAddress": "Blk 7 Lot 12, Quezon City"
+}
+
+###
+
+# Backward-compatible legacy route
+POST {{Server_HostAddress}}/api/SupplierProduct/submit-product
+Content-Type: application/json
+
+{
+  "supplierName": "Nike Vendor PH",
+  "productName": "Air Zoom Alpha",
+  "quantity": 25
+}
+
+###

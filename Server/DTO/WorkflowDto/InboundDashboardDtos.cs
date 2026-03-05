@@ -48,4 +48,13 @@ namespace Server.DTO.WorkflowDto
         public string Description { get; set; } = string.Empty;
         public string Timestamp { get; set; } = string.Empty;
     }
+
+    public class InboundKpiDto
+    {
+        public int PendingAcceptanceCount { get; set; }
+        public int InTransitCount { get; set; }
+        public int StoredTodayCount { get; set; }
+        public int ActionsTodayCount { get; set; }
+        public int TotalUnitsIncoming { get; set; }
+    }
 }

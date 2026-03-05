@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Server.Utilities;
 
 namespace Server.Models
 {
@@ -6,7 +7,7 @@ namespace Server.Models
     {
         [Key]
         [MaxLength(36)]
-        public string OrderId { get; set; } = Guid.NewGuid().ToString();
+        public string OrderId { get; set; } = IdGenerator.Create("ORD");
 
         [MaxLength(50)]
         public string Branch { get; set; } = string.Empty;
@@ -36,9 +37,12 @@ namespace Server.Models
 
         [MaxLength(450)]
         public string? ApprovedByUserId { get; set; }
+        public virtual Users? ApprovedByUser { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? ApprovedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+
+        public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
     }
 }

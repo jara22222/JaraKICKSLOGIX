@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Server.Utilities;
 
 namespace Server.Models
 {
@@ -9,12 +10,17 @@ namespace Server.Models
         [Key]
         [Column("BinId")]
         [MaxLength(128)]
-        public string BinId { get; set; } = Guid.NewGuid().ToString();
+        public string BinId { get; set; } = IdGenerator.Create("BIN");
 
         [Required]
         [Column("BinLocation")]
         [MaxLength(20)]
         public string BinLocationCode { get; set; } = string.Empty;
+
+        [Required]
+        [Column("Branch")]
+        [MaxLength(50)]
+        public string Branch { get; set; } = string.Empty;
 
         [Required]
         [Column("BinStatus")]
@@ -42,5 +48,8 @@ namespace Server.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         [Column("UpdatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        public virtual ICollection<Inventory> InventoryItems { get; set; } = new List<Inventory>();
+        public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
     }
 }

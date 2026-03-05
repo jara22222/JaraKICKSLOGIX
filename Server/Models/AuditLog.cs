@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Server.Utilities;
 
 namespace Server.Models
 {
@@ -7,7 +8,7 @@ namespace Server.Models
     {
         [Key]
         [MaxLength(36)]
-        public string LogId { get; set; } = Guid.NewGuid().ToString(); 
+        public string LogId { get; set; } = IdGenerator.Create("LOG"); 
         [MaxLength(128)]
         public string UserId { get; set; } = string.Empty;
         public string PerformedBy { get; set; } = string.Empty;

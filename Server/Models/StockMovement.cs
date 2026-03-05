@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Server.Utilities;
 
 namespace Server.Models
 {
@@ -6,7 +7,7 @@ namespace Server.Models
     {
         [Key]
         [MaxLength(36)]
-        public string MovementId { get; set; } = Guid.NewGuid().ToString();
+        public string MovementId { get; set; } = IdGenerator.Create("MOV");
 
         [MaxLength(36)]
         public string? ProductId { get; set; }
@@ -16,6 +17,9 @@ namespace Server.Models
 
         [MaxLength(128)]
         public string? BinId { get; set; }
+        public virtual BinLocation? BinLocation { get; set; }
+        public virtual Inventory? Product { get; set; }
+        public virtual Order? Order { get; set; }
 
         [MaxLength(50)]
         public string Branch { get; set; } = string.Empty;

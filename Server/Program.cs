@@ -13,28 +13,65 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 //Add cors services
-builder.Services.AddCors(options => 
+builder.Services.AddCors(options =>
 {
-    options.AddPolicy("MyAllowSpecificOrigins",
-    policy=>{
-        var allowedOrigins = new[]
+    options.AddPolicy("MyAllowSpecificOrigins", policy =>
+    {
+        var configuredOrigins = builder.Configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>()?
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Select(static value => value.Trim().TrimEnd('/'))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList()
+            ?? [];
+
+        var localDevelopmentOrigins = new[]
         {
             "http://localhost:5173",
-            "http://192.168.56.1:5173",
-            "http://192.168.254.131:5173"
+            "https://localhost:5173",
+            "http://127.0.0.1:5173",
+            "https://127.0.0.1:5173"
         };
 
+        if (builder.Environment.IsDevelopment())
+        {
+            configuredOrigins = configuredOrigins
+                .Concat(localDevelopmentOrigins)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
         policy
-            .SetIsOriginAllowed((origin) =>
+            .SetIsOriginAllowed(origin =>
             {
-                var normalized = origin.TrimEnd('/');
-                return allowedOrigins.Any((allowed) =>
-                    string.Equals(
-                        allowed.TrimEnd('/'),
-                        normalized,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                );
+                var normalizedOrigin = origin.Trim().TrimEnd('/');
+                if (configuredOrigins.Contains(normalizedOrigin, StringComparer.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                // Supports patterns like https://*.vercel.app for preview deployments.
+                return configuredOrigins.Any(configured =>
+                {
+                    if (!configured.Contains('*', StringComparison.Ordinal))
+                    {
+                        return false;
+                    }
+
+                    if (!Uri.TryCreate(origin, UriKind.Absolute, out var originUri))
+                    {
+                        return false;
+                    }
+
+                    if (!Uri.TryCreate(configured.Replace("*.", string.Empty, StringComparison.Ordinal), UriKind.Absolute, out var configuredUri))
+                    {
+                        return false;
+                    }
+
+                    return string.Equals(originUri.Scheme, configuredUri.Scheme, StringComparison.OrdinalIgnoreCase)
+                        && originUri.Host.EndsWith($".{configuredUri.Host}", StringComparison.OrdinalIgnoreCase);
+                });
             })
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -56,7 +93,13 @@ builder.Services.AddIdentity<Users, IdentityRole>(options => {
     options.Password.RequireNonAlphanumeric = true;
     options.Password.RequiredLength = 12; // Fixed typo
 })
-.AddEntityFrameworkStores<ApplicationDbContext>();
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
+
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+{
+    options.TokenLifespan = TimeSpan.FromMinutes(30);
+});
 
 builder.Services.AddAuthentication(options => {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -82,9 +125,30 @@ builder.Services.AddAuthentication(options => {
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 var app = builder.Build();
+
+var resendApiKeyFromConfig = builder.Configuration["Email:ApiKey"];
+var resendApiKeyFromProcess = Environment.GetEnvironmentVariable("KICKSLOGIX_EMAIL_API_KEY", EnvironmentVariableTarget.Process);
+var resendApiKeyFromUser = Environment.GetEnvironmentVariable("KICKSLOGIX_EMAIL_API_KEY", EnvironmentVariableTarget.User);
+var resendApiKeyFromMachine = Environment.GetEnvironmentVariable("KICKSLOGIX_EMAIL_API_KEY", EnvironmentVariableTarget.Machine);
+var resendApiKeySource =
+    !string.IsNullOrWhiteSpace(resendApiKeyFromConfig) ? "config:Email:ApiKey" :
+    !string.IsNullOrWhiteSpace(resendApiKeyFromProcess) ? "env:Process" :
+    !string.IsNullOrWhiteSpace(resendApiKeyFromUser) ? "env:User" :
+    !string.IsNullOrWhiteSpace(resendApiKeyFromMachine) ? "env:Machine" :
+    "not-configured";
+
+if (resendApiKeySource == "not-configured")
+{
+    app.Logger.LogWarning("Email provider startup check: Resend API key is NOT configured.");
+}
+else
+{
+    app.Logger.LogInformation("Email provider startup check: Resend API key is configured via {Source}.", resendApiKeySource);
+}
 
 
 // Configure the HTTP request pipeline.

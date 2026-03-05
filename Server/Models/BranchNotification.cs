@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Server.Utilities;
 
 namespace Server.Models
 {
@@ -6,7 +7,7 @@ namespace Server.Models
     {
         [Key]
         [MaxLength(36)]
-        public string NotificationId { get; set; } = Guid.NewGuid().ToString();
+        public string NotificationId { get; set; } = IdGenerator.Create("NTF");
 
         [MaxLength(50)]
         public string Branch { get; set; } = string.Empty;

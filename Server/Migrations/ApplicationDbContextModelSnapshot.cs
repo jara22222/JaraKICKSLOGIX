@@ -220,6 +220,12 @@ namespace Server.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("BinStatus");
 
+                    b.Property<string>("Branch")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("Branch");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("CreatedAt");
@@ -243,6 +249,8 @@ namespace Server.Migrations
                         .HasColumnName("UpdatedAt");
 
                     b.HasKey("BinId");
+
+                    b.HasIndex("Branch", "BinStatus", "CreatedAt");
 
                     b.ToTable("BinLocation");
                 });
@@ -291,6 +299,100 @@ namespace Server.Migrations
                     b.HasIndex("Branch", "IsRead", "CreatedAt");
 
                     b.ToTable("BranchNotifications");
+                });
+
+            modelBuilder.Entity("Server.Models.BranchPasswordResetRequest", b =>
+                {
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("Branch")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RequestedByAddress")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("RequestedByEmail")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RequestedByFirstName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RequestedByLastName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RequestedRoleName")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("ResetCompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ResetLinkSentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewRemarks")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ReviewedByUserName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("UserEmail")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UserFirstName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserLastName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("RequestId");
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.HasIndex("Branch", "Status", "RequestedAt");
+
+                    b.ToTable("BranchPasswordResetRequests");
                 });
 
             modelBuilder.Entity("Server.Models.Inventory", b =>
@@ -359,6 +461,8 @@ namespace Server.Migrations
                         .HasColumnType("nvarchar(30)");
 
                     b.HasKey("ProductId");
+
+                    b.HasIndex("BinId");
 
                     b.HasIndex("SupplierId");
 
@@ -429,6 +533,8 @@ namespace Server.Migrations
 
                     b.HasKey("OrderId");
 
+                    b.HasIndex("ApprovedByUserId");
+
                     b.HasIndex("Branch", "Status", "CreatedAt");
 
                     b.ToTable("Orders");
@@ -493,6 +599,12 @@ namespace Server.Migrations
 
                     b.HasKey("MovementId");
 
+                    b.HasIndex("BinId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("ProductId");
+
                     b.HasIndex("Branch", "Action", "OccurredAt");
 
                     b.ToTable("StockMovements");
@@ -551,8 +663,8 @@ namespace Server.Migrations
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("MiddleName")
-                        .HasMaxLength(1)
-                        .HasColumnType("nvarchar(1)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
@@ -650,17 +762,72 @@ namespace Server.Migrations
 
             modelBuilder.Entity("Server.Models.Inventory", b =>
                 {
+                    b.HasOne("Server.Models.BinLocation", "BinLocation")
+                        .WithMany("InventoryItems")
+                        .HasForeignKey("BinId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Server.Models.Users", "User")
                         .WithMany("InventoryItems")
                         .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("BinLocation");
 
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Server.Models.Order", b =>
+                {
+                    b.HasOne("Server.Models.Users", "ApprovedByUser")
+                        .WithMany("ApprovedOrders")
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ApprovedByUser");
+                });
+
+            modelBuilder.Entity("Server.Models.StockMovement", b =>
+                {
+                    b.HasOne("Server.Models.BinLocation", "BinLocation")
+                        .WithMany("StockMovements")
+                        .HasForeignKey("BinId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Server.Models.Order", "Order")
+                        .WithMany("StockMovements")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Server.Models.Inventory", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("BinLocation");
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Server.Models.BinLocation", b =>
+                {
+                    b.Navigation("InventoryItems");
+
+                    b.Navigation("StockMovements");
+                });
+
+            modelBuilder.Entity("Server.Models.Order", b =>
+                {
+                    b.Navigation("StockMovements");
+                });
+
             modelBuilder.Entity("Server.Models.Users", b =>
                 {
+                    b.Navigation("ApprovedOrders");
+
                     b.Navigation("InventoryItems");
                 });
 #pragma warning restore 612, 618
