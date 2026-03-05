@@ -6,6 +6,6 @@ type TabState = {
 };
 
 export const useTabState = create<TabState>((set) => ({
-  activeTab: "partners",
+  activeTab: "orders",
   setActiveTab: (tab) => set({ activeTab: tab }),
 }));

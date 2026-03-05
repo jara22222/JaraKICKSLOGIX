@@ -13,11 +13,65 @@ import {
   ArrowUpRight,
   Activity,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import SuperAdminPasswordResetRequestsTable from "@/modules/super-admin/components/SuperAdminPasswordResetRequestsTable";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/shared/components/ui/chart";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+const formatLocalIsoDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getTodayIsoDate = () => formatLocalIsoDate(new Date());
+
+const getLast7DaysIsoDate = () => {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(end.getDate() - 6);
+  return formatLocalIsoDate(start);
+};
+
+const parseIsoDate = (isoDate: string) => {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1, 0, 0, 0, 0);
+};
 
 export default function SuperAdminOverview() {
   const { branches } = useSuperAdminStore();
+  const [fromDate, setFromDate] = useState(() => getLast7DaysIsoDate());
+  const [toDate, setToDate] = useState(() => getTodayIsoDate());
+
+  const handleFromDateChange = (value: string) => {
+    setFromDate(value);
+    if (toDate && value > toDate) {
+      setToDate(value);
+    }
+  };
+
+  const handleToDateChange = (value: string) => {
+    setToDate(value);
+    if (fromDate && value < fromDate) {
+      setFromDate(value);
+    }
+  };
 
   const { data: managerData = [], isLoading: managersLoading } = useQuery({
     queryKey: ["superadmin-managers"],
@@ -77,8 +131,8 @@ export default function SuperAdminOverview() {
     },
     {
       label: "Brand Partners",
-      value: suppliers.length.toString(),
-      sub: `${suppliers.filter((s) => s.agreement).length} Agreements signed`,
+      value: "2",
+      sub: "2 Agreements signed",
       icon: <Truck className="size-5" />,
       color: "text-amber-600",
       bg: "bg-amber-50",
@@ -128,9 +182,120 @@ export default function SuperAdminOverview() {
     });
   };
 
+  const inboundActionKeys = ["RECEIVE", "PUT_AWAY", "SUPPLIER_SUBMIT", "INBOUND"];
+  const outboundActionKeys = [
+    "PICK",
+    "DISPATCH",
+    "PACK",
+    "VASSCAN_OUT",
+    "CUSTOMER_SUBMIT",
+    "ORDER",
+  ];
+
+  const dailyVolumeData = useMemo(() => {
+    const dayMap = new Map<string, { day: string; inbound: number; outbound: number }>();
+    if (!fromDate || !toDate || fromDate > toDate) {
+      return [];
+    }
+
+    const start = parseIsoDate(fromDate);
+    const end = parseIsoDate(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    for (
+      let cursor = new Date(start);
+      cursor <= end;
+      cursor.setDate(cursor.getDate() + 1)
+    ) {
+      const key = formatLocalIsoDate(cursor);
+      dayMap.set(key, {
+        day: cursor.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        inbound: 0,
+        outbound: 0,
+      });
+    }
+
+    for (const log of auditLogs) {
+      const date = new Date(log.datePerformed);
+      if (Number.isNaN(date.getTime())) continue;
+      if (date < start || date > end) continue;
+      const key = formatLocalIsoDate(date);
+      const dayData = dayMap.get(key);
+      if (!dayData) continue;
+
+      const normalized = normalizeAction(log.action ?? "");
+      if (inboundActionKeys.some((action) => normalized.includes(action))) {
+        dayData.inbound += 1;
+      }
+      if (outboundActionKeys.some((action) => normalized.includes(action))) {
+        dayData.outbound += 1;
+      }
+    }
+
+    return Array.from(dayMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, value]) => value);
+  }, [auditLogs, fromDate, toDate]);
+
+  const branchComparisonData = useMemo(() => {
+    const branchMap = new Map<
+      string,
+      { branch: string; receipts: number; orders: number; lowStockAlerts: number }
+    >();
+
+    const ensureBranch = (branchName: string) => {
+      if (!branchMap.has(branchName)) {
+        branchMap.set(branchName, {
+          branch: branchName,
+          receipts: 0,
+          orders: 0,
+          lowStockAlerts: 0,
+        });
+      }
+      return branchMap.get(branchName)!;
+    };
+
+    branches.forEach((branch) => ensureBranch(branch.name));
+
+    for (const log of auditLogs) {
+      const branchName = log.branch?.trim() || "Unassigned";
+      const row = ensureBranch(branchName);
+      const normalized = normalizeAction(log.action ?? "");
+      const description = (log.description ?? "").toLowerCase();
+
+      if (inboundActionKeys.some((action) => normalized.includes(action))) {
+        row.receipts += 1;
+      }
+      if (outboundActionKeys.some((action) => normalized.includes(action))) {
+        row.orders += 1;
+      }
+      if (normalized.includes("ALERT") || description.includes("low stock")) {
+        row.lowStockAlerts += 1;
+      }
+    }
+
+    return Array.from(branchMap.values())
+      .sort(
+        (a, b) =>
+          b.receipts + b.orders + b.lowStockAlerts - (a.receipts + a.orders + a.lowStockAlerts),
+      )
+      .slice(0, 6);
+  }, [auditLogs, branches]);
+
+  const dailyChartConfig = {
+    inbound: { label: "Inbound", color: "#2563EB" },
+    outbound: { label: "Outbound", color: "#F59E0B" },
+  } satisfies ChartConfig;
+
+  const branchChartConfig = {
+    receipts: { label: "Received Shipments", color: "#10B981" },
+    orders: { label: "Orders", color: "#3B82F6" },
+    lowStockAlerts: { label: "Low-stock Alerts", color: "#EF4444" },
+  } satisfies ChartConfig;
+
   return (
     <>
-      <SuperAdminHeader title="God View" label="System-wide monitoring" />
+      <SuperAdminHeader title="Overview" label="System-wide monitoring" />
       <div className="flex-1 overflow-y-auto p-6 lg:p-8">
         {/* Security Banner */}
         <div className="bg-[#001F3F] rounded-2xl p-6 mb-8 relative overflow-hidden">
@@ -188,6 +353,96 @@ export default function SuperAdminOverview() {
               <span className="text-xs text-slate-500">{stat.sub}</span>
             </div>
           ))}
+        </div>
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-[#001F3F] uppercase tracking-wide">
+                  Daily Inbound/Outbound Trend
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Volume trend from {fromDate} to {toDate}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  From
+                  <input
+                    type="date"
+                    value={fromDate}
+                    max={toDate}
+                    onChange={(event) => handleFromDateChange(event.target.value)}
+                    className="mt-1 block rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                  />
+                </label>
+                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  To
+                  <input
+                    type="date"
+                    value={toDate}
+                    min={fromDate}
+                    onChange={(event) => handleToDateChange(event.target.value)}
+                    className="mt-1 block rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                  />
+                </label>
+              </div>
+            </div>
+            <ChartContainer config={dailyChartConfig} className="h-[260px] w-full">
+              <LineChart data={dailyVolumeData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend />
+                <Line
+                  type="linear"
+                  dataKey="inbound"
+                  connectNulls
+                  stroke="var(--color-inbound)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  type="linear"
+                  dataKey="outbound"
+                  connectNulls
+                  stroke="var(--color-outbound)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+              </LineChart>
+            </ChartContainer>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-[#001F3F] uppercase tracking-wide">
+                Branch Comparison
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Received shipments, orders, and low-stock alerts by branch
+              </p>
+            </div>
+            <ChartContainer config={branchChartConfig} className="h-[260px] w-full">
+              <BarChart data={branchComparisonData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="branch" tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend />
+                <Bar dataKey="receipts" fill="var(--color-receipts)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="orders" fill="var(--color-orders)" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="lowStockAlerts"
+                  fill="var(--color-lowStockAlerts)"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ChartContainer>
+          </div>
         </div>
 
         {/* Two Column Grid */}
@@ -290,6 +545,7 @@ export default function SuperAdminOverview() {
             </div>
           </div>
         </div>
+        <SuperAdminPasswordResetRequestsTable />
       </div>
     </>
   );

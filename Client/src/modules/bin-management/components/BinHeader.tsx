@@ -44,7 +44,7 @@ export default function BinHeader() {
             <Printer size={16} /> Print All QRs
           </button>
           <button
-            onClick={setIsAddModalOpen}
+            onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-[#001F3F] text-white rounded-lg hover:bg-[#00162e] transition-all shadow-md active:scale-95 font-medium text-sm"
           >
             <Plus size={16} /> Add New Bin

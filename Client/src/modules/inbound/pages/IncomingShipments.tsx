@@ -1,6 +1,5 @@
 import InboundHeader from "@/modules/inbound/components/InboundHeader";
 import IncomingShipmentsTable from "@/modules/inbound/components/IncomingShipmentsTable";
-import AcceptShipmentModal from "@/modules/inbound/components/AcceptShipmentModal";
 import SearchToolBar from "@/shared/components/SearchToolBar";
 import DateFilter from "@/shared/components/DateFilter";
 
@@ -19,7 +18,6 @@ export default function IncomingShipments() {
         </div>
 
         <IncomingShipmentsTable />
-        <AcceptShipmentModal />
       </div>
     </>
   );

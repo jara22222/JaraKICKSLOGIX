@@ -1,50 +1,35 @@
-import { useInboundStore } from "@/modules/inbound/store/UseInboundStore";
+import {
+  getInboundKpis,
+} from "@/modules/inbound/services/inboundData";
 import {
   PackageCheck,
-  Truck,
   Warehouse,
   Clock,
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 export default function InboundKPIs() {
-  const { incomingShipments, receipts, activityLog } = useInboundStore();
-
-  const arrivedCount = incomingShipments.filter(
-    (s) => s.status === "Arrived"
-  ).length;
-  const inTransitCount = incomingShipments.filter(
-    (s) => s.status === "In Transit"
-  ).length;
-  const storedCount = receipts.filter((r) => r.status === "Stored").length;
-  const totalUnitsIncoming = incomingShipments.reduce(
-    (sum, s) => sum + s.qty,
-    0
-  );
+  const { data: inboundKpis, isLoading, isError } = useQuery({
+    queryKey: ["inbound-kpis"],
+    queryFn: getInboundKpis,
+    retry: false,
+  });
 
   const stats = [
     {
       label: "Pending Acceptance",
-      value: arrivedCount.toString(),
-      sub: `${totalUnitsIncoming.toLocaleString()} total units incoming`,
+      value: (inboundKpis?.pendingAcceptanceCount ?? 0).toString(),
+      sub: `${(inboundKpis?.totalUnitsIncoming ?? 0).toLocaleString()} total units incoming`,
       icon: <Clock className="size-5" />,
       color: "text-amber-600",
       bg: "bg-amber-50",
-      trend: arrivedCount > 0 ? "up" : "neutral",
-    },
-    {
-      label: "In Transit",
-      value: inTransitCount.toString(),
-      sub: "Shipments en route",
-      icon: <Truck className="size-5" />,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-      trend: "neutral",
+      trend: (inboundKpis?.pendingAcceptanceCount ?? 0) > 0 ? "up" : "neutral",
     },
     {
       label: "Stored Today",
-      value: storedCount.toString(),
+      value: (inboundKpis?.storedTodayCount ?? 0).toString(),
       sub: "Successfully put-away",
       icon: <Warehouse className="size-5" />,
       color: "text-emerald-600",
@@ -53,7 +38,7 @@ export default function InboundKPIs() {
     },
     {
       label: "Actions Today",
-      value: activityLog.length.toString(),
+      value: (inboundKpis?.actionsTodayCount ?? 0).toString(),
       sub: "Receive, put-away, alerts",
       icon: <PackageCheck className="size-5" />,
       color: "text-purple-600",
@@ -63,7 +48,12 @@ export default function InboundKPIs() {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      {isError && (
+        <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Unable to load KPI metrics right now. Please try again.
+        </div>
+      )}
       {stats.map((stat, idx) => (
         <div
           key={idx}
@@ -81,7 +71,7 @@ export default function InboundKPIs() {
           </div>
           <div className="flex items-end gap-2">
             <h3 className="text-3xl font-black text-[#001F3F]">
-              {stat.value}
+              {isLoading ? "--" : stat.value}
             </h3>
             {stat.trend === "up" && (
               <ArrowUpRight className="size-4 text-emerald-500 mb-1" />

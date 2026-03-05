@@ -1,24 +1,33 @@
-import { useOutboundCoordinatorStore } from "@/modules/outbound/store/UseOutboundCoordinatorStore";
 import {
-  ScanLine,
   ClipboardList,
   PackageCheck,
-  AlertTriangle,
-  ArrowRightLeft,
   Footprints,
   ChevronRight,
-  MapPin,
+  Clock3,
+  Activity,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import {
+  getApprovedDispatchOrders,
+  getDispatchActivityLog,
+} from "@/modules/outbound/services/dispatchWorkflow";
 
 export default function OutboundDashboard() {
-  const { pickRequests, reassignments, activityLog, binProducts } =
-    useOutboundCoordinatorStore();
+  const { data: orders = [], isLoading: isOrdersLoading, isError: isOrdersError } = useQuery({
+    queryKey: ["dispatch-approved-orders"],
+    queryFn: getApprovedDispatchOrders,
+    retry: false,
+  });
+  const { data: activityLog = [], isLoading: isActivityLoading, isError: isActivityError } = useQuery({
+    queryKey: ["dispatch-activity-log"],
+    queryFn: getDispatchActivityLog,
+    retry: false,
+  });
 
-  const pendingPicks = pickRequests.filter((r) => r.status === "Pending").length;
-  const locatedPicks = pickRequests.filter((r) => r.status === "Located").length;
-  const confirmedToday = pickRequests.filter((r) => r.status === "Confirmed").length;
-  const urgentPicks = pickRequests.filter((r) => r.priority === "Urgent" && r.status !== "Confirmed").length;
+  const pendingDispatch = orders.filter((item) => item.status === "Approved").length;
+  const claimedDispatch = orders.filter((item) => item.status === "DispatchClaimed").length;
+  const queuedToVas = orders.filter((item) => item.status === "ToVAS").length;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -40,15 +49,13 @@ export default function OutboundDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-orange-400 to-orange-600 border-2 border-orange-300/30 flex items-center justify-center">
-              <span className="text-xs font-black text-white">JJ</span>
+              <span className="text-xs font-black text-white">D</span>
             </div>
           </div>
         </div>
 
         <div>
-          <p className="text-slate-300 text-xs font-medium">
-            Good morning, Jara
-          </p>
+          <p className="text-slate-300 text-xs font-medium">Dispatch Clerk</p>
           <h2 className="text-2xl font-black mt-1">Outbound Overview</h2>
           <p className="text-slate-400 text-xs mt-1">
             {new Date().toLocaleDateString("en-US", {
@@ -62,46 +69,34 @@ export default function OutboundDashboard() {
       </div>
 
       <div className="px-5 -mt-4">
-        {/* Urgent Banner */}
-        {urgentPicks > 0 && (
-          <div className="bg-red-500 text-white rounded-2xl p-4 flex items-center gap-3 mb-5 shadow-lg shadow-red-500/20 animate-pulse">
-            <AlertTriangle className="size-5 shrink-0" />
-            <div>
-              <p className="text-sm font-bold">
-                {urgentPicks} Urgent Pick{urgentPicks > 1 ? "s" : ""} Waiting
-              </p>
-              <p className="text-xs text-red-100 mt-0.5">
-                Needs immediate attention
-              </p>
-            </div>
-            <Link
-              to="/outbound/picklist"
-              className="ml-auto bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs font-bold"
-            >
-              View
-            </Link>
+        {(isOrdersError || isActivityError) && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            Live outbound data is temporarily unavailable. Retrying automatically...
           </div>
         )}
-
         {/* KPI Grid */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
             <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
-              <ClipboardList className="size-5 text-amber-600" />
+              <Clock3 className="size-5 text-amber-600" />
             </div>
-            <p className="text-2xl font-black text-[#001F3F]">{pendingPicks}</p>
+            <p className="text-2xl font-black text-[#001F3F]">
+              {isOrdersLoading ? "--" : pendingDispatch}
+            </p>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-              Pending Picks
+              Pending Dispatch
             </p>
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
             <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-              <MapPin className="size-5 text-blue-600" />
+              <ClipboardList className="size-5 text-blue-600" />
             </div>
-            <p className="text-2xl font-black text-[#001F3F]">{locatedPicks}</p>
+            <p className="text-2xl font-black text-[#001F3F]">
+              {isOrdersLoading ? "--" : claimedDispatch}
+            </p>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-              Located
+              Claimed
             </p>
           </div>
 
@@ -109,21 +104,23 @@ export default function OutboundDashboard() {
             <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
               <PackageCheck className="size-5 text-emerald-600" />
             </div>
-            <p className="text-2xl font-black text-[#001F3F]">{confirmedToday}</p>
+            <p className="text-2xl font-black text-[#001F3F]">
+              {isOrdersLoading ? "--" : queuedToVas}
+            </p>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-              Confirmed
+              Sent To VAS
             </p>
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
             <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center mb-3">
-              <ArrowRightLeft className="size-5 text-purple-600" />
+              <Activity className="size-5 text-purple-600" />
             </div>
             <p className="text-2xl font-black text-[#001F3F]">
-              {reassignments.length}
+              {isActivityLoading ? "--" : activityLog.length}
             </p>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-              Reassignments
+              Audit Logs
             </p>
           </div>
         </div>
@@ -135,24 +132,6 @@ export default function OutboundDashboard() {
           </h3>
           <div className="space-y-3">
             <Link
-              to="/outbound/reassign"
-              className="flex items-center gap-4 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#001F3F] to-[#003366] flex items-center justify-center shadow-md">
-                <ScanLine className="size-6 text-[#FFD700]" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-[#001F3F]">
-                  Scan & Reassign Bins
-                </p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  FIFO rotation — scan 2 product QR codes to swap
-                </p>
-              </div>
-              <ChevronRight className="size-5 text-slate-300" />
-            </Link>
-
-            <Link
               to="/outbound/picklist"
               className="flex items-center gap-4 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform"
             >
@@ -161,10 +140,26 @@ export default function OutboundDashboard() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-[#001F3F]">
-                  Product Pick Requests
+                  Main Process
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {pendingPicks} pending — find &amp; scan to confirm
+                  Scan item and dispatch approved orders to VAS
+                </p>
+              </div>
+              <ChevronRight className="size-5 text-slate-300" />
+            </Link>
+
+            <Link
+              to="/outbound/activity"
+              className="flex items-center gap-4 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-500 to-purple-700 flex items-center justify-center shadow-md">
+                <Activity className="size-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-[#001F3F]">Role Audit Logs</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  View DispatchClerk logs scoped to your branch
                 </p>
               </div>
               <ChevronRight className="size-5 text-slate-300" />
@@ -191,67 +186,16 @@ export default function OutboundDashboard() {
                 key={log.id}
                 className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex items-start gap-3"
               >
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    log.action === "Bin Reassign"
-                      ? "bg-purple-50 text-purple-600"
-                      : log.action === "Pick Confirm"
-                        ? "bg-emerald-50 text-emerald-600"
-                        : "bg-blue-50 text-blue-600"
-                  }`}
-                >
-                  {log.action === "Bin Reassign" ? (
-                    <ArrowRightLeft className="size-4" />
-                  ) : (
-                    <PackageCheck className="size-4" />
-                  )}
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-600">
+                  <PackageCheck className="size-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-[#001F3F] truncate">
                     {log.description}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    {log.timestamp}
+                    {log.user} · {log.timestamp}
                   </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Bin Inventory Summary */}
-        <div className="mb-8">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">
-            Bin Inventory ({binProducts.length} Products)
-          </h3>
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            {binProducts.slice(0, 5).map((bp, idx) => (
-              <div
-                key={bp.id}
-                className={`flex items-center gap-3 p-3 ${
-                  idx < Math.min(binProducts.length, 5) - 1
-                    ? "border-b border-slate-100"
-                    : ""
-                }`}
-              >
-                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                  <span className="text-[10px] font-bold font-mono text-[#001F3F]">
-                    {bp.binCode.split("-")[0]}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-[#001F3F] truncate">
-                    {bp.product}
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-mono">
-                    {bp.sku}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold font-mono text-[#001F3F]">
-                    {bp.binCode}
-                  </p>
-                  <p className="text-[10px] text-slate-400">x{bp.qty}</p>
                 </div>
               </div>
             ))}

@@ -11,6 +11,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import ConfirmationModal from "@/shared/components/ConfirmationModal";
 
 const HEADERS = [
   "Bin ID",
@@ -26,6 +27,11 @@ export default function BinsArchived() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [restoreTarget, setRestoreTarget] = useState<{
+    binId: string;
+    binLocation: string;
+    binSize: string;
+  } | null>(null);
 
   const { data: archivedBins = [], isLoading } = useQuery({
     queryKey: ["branchmanager-archived-bins"],
@@ -113,13 +119,13 @@ export default function BinsArchived() {
               <tbody className="divide-y divide-slate-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="p-4 text-sm text-slate-500">
+                    <td colSpan={5} className="p-4 text-sm text-slate-500 text-center">
                       Loading archived bins...
                     </td>
                   </tr>
                 ) : paged.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-4 text-sm text-slate-500">
+                    <td colSpan={5} className="p-4 text-sm text-slate-500 text-center">
                       No archived bins found.
                     </td>
                   </tr>
@@ -143,7 +149,13 @@ export default function BinsArchived() {
                       </td>
                       <td className="p-3 text-right">
                         <button
-                          onClick={() => restoreMutation.mutate(bin.binId)}
+                          onClick={() =>
+                            setRestoreTarget({
+                              binId: bin.binId,
+                              binLocation: bin.binLocation,
+                              binSize: bin.binSize,
+                            })
+                          }
                           disabled={restoreMutation.isPending}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                         >
@@ -173,6 +185,29 @@ export default function BinsArchived() {
           </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={!!restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        onConfirm={() => {
+          if (!restoreTarget || restoreMutation.isPending) return;
+          restoreMutation.mutate(restoreTarget.binId, {
+            onSuccess: () => setRestoreTarget(null),
+          });
+        }}
+        title="Restore Bin Location"
+        description="Are you sure you want to restore this archived bin to active bin locations?"
+        confirmLabel={restoreMutation.isPending ? "Restoring..." : "Restore Bin"}
+        confirmVariant="primary"
+        confirmIcon={<RotateCcw className="size-3.5" />}
+      >
+        {restoreTarget && (
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <p className="text-sm font-bold text-[#001F3F]">{restoreTarget.binLocation}</p>
+            <p className="text-xs text-slate-500">Size: {restoreTarget.binSize}</p>
+          </div>
+        )}
+      </ConfirmationModal>
     </>
   );
 }

@@ -34,7 +34,7 @@ export default function ExportToolbar({
 
   return (
     <>
-      <div className="relative">
+      <div className="relative z-30">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="h-10 px-4 bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
@@ -49,7 +49,7 @@ export default function ExportToolbar({
               className="fixed inset-0 z-40"
               onClick={() => setIsOpen(false)}
             />
-            <div className="absolute left-0 bottom-full mb-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden">
+            <div className="absolute left-0 bottom-full mb-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-[60] overflow-hidden">
               <button
                 onClick={() => handleRequestExport("csv")}
                 className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors"

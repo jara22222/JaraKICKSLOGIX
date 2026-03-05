@@ -1,6 +1,6 @@
-import AccessControlCards from "@/modules/access-control/components/AccessControlCards";
 import AccessControlTable from "@/modules/access-control/components/AccessControlTable";
 import AccessControllFormModal from "@/modules/access-control/components/AccessControllFormModal";
+import PasswordResetRequestsTable from "@/modules/access-control/components/PasswordResetRequestsTable";
 import { UseModalState } from "@/modules/access-control/store/UseModalState";
 import AcessControllHeader from "@/shared/layout/Header";
 import { Plus, Search, SlidersHorizontal } from "lucide-react";
@@ -15,8 +15,6 @@ export default function AdminAccessControl() {
         label="Manage accounts and roles"
       />
       <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-        <AccessControlCards />
-
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row justify-between w-full items-start sm:items-center gap-4 mb-6">
           <div className="relative w-full sm:w-96 group">
@@ -43,6 +41,7 @@ export default function AdminAccessControl() {
         </div>
 
         <AccessControlTable />
+        <PasswordResetRequestsTable />
         <AccessControllFormModal />
       </div>
     </>

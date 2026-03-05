@@ -28,7 +28,7 @@ export default function StatusBadge({
     styles = "bg-blue-50 text-blue-700 border-blue-200";
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border cursor-default select-none ${styles}`}
     >
       <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
       {status === "Active" && isFull && <Box size={10} />}

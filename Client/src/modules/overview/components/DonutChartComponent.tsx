@@ -1,72 +1,64 @@
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/shared/components/ui/chart";
+import { Cell, Legend, Pie, PieChart } from "recharts";
+
+const comparisonChartConfig = {
+  receipts: { label: "Received Shipments", color: "#10B981" },
+  orders: { label: "Orders", color: "#3B82F6" },
+  lowStockAlerts: { label: "Low-stock Alerts", color: "#EF4444" },
+} satisfies ChartConfig;
+
+const comparisonData = [
+  { zone: "Inbound Zone A", receipts: 12, orders: 9, lowStockAlerts: 2 },
+  { zone: "Inbound Zone B", receipts: 9, orders: 7, lowStockAlerts: 1 },
+  { zone: "Dispatch Zone", receipts: 5, orders: 13, lowStockAlerts: 3 },
+];
+
+const zoneTotals = comparisonData.map((zone) => ({
+  zone: zone.zone,
+  total: zone.receipts + zone.orders + zone.lowStockAlerts,
+}));
+
+const zoneColors = ["#10B981", "#3B82F6", "#EF4444"];
+
 export default function DonutChartComponent() {
   return (
     <>
-      <div className="bg-[#001F3F] rounded-xl border border-[#001F3F] shadow-lg p-6 text-white relative">
-        <h3 className="text-sm font-bold uppercase tracking-wide mb-1 text-white">
-          Warehouse Capacity
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h3 className="text-sm font-bold text-[#001F3F] uppercase tracking-wide mb-1">
+          Zone Comparison
         </h3>
-        <p className="text-xs text-slate-400 mb-6">Current Bin Utilization</p>
-
-        <div className="flex items-center justify-center relative h-48">
-          {/* Custom SVG Donut Chart */}
-          <svg viewBox="0 0 36 36" className="w-40 h-40 transform -rotate-90">
-            {/* Background Circle */}
-            <path
-              className="text-white/10"
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3.5"
-            />
-            {/* Nike Segment (Yellow) */}
-            <path
-              className="text-[#FFD700]"
-              strokeDasharray="40, 100"
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3.5"
-            />
-            {/* Adidas Segment (Blue) */}
-            <path
-              className="text-blue-500"
-              strokeDasharray="25, 100"
-              strokeDashoffset="-42"
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3.5"
-            />
-            {/* Puma Segment (Purple) */}
-            <path
-              className="text-purple-500"
-              strokeDasharray="13, 100"
-              strokeDashoffset="-69"
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3.5"
-            />
-          </svg>
-          <div className="absolute text-center">
-            <span className="text-3xl font-black text-white block">78%</span>
-            <span className="text-[10px] uppercase text-slate-400 font-bold tracking-widest">
-              Occupied
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-between text-xs font-medium text-slate-300 px-2">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#FFD700]"></span> Nike
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span> Adidas
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-purple-500"></span> Puma
-          </div>
-        </div>
+        <p className="text-xs text-slate-500 mb-4">
+          Distribution by total activity per zone
+        </p>
+        <ChartContainer config={comparisonChartConfig} className="h-[260px] w-full">
+          <PieChart>
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Legend />
+            <Pie
+              data={zoneTotals}
+              dataKey="total"
+              nameKey="zone"
+              cx="50%"
+              cy="50%"
+              outerRadius={90}
+              innerRadius={45}
+              paddingAngle={3}
+              stroke="none"
+              label={({ name, percent }) =>
+                `${String(name ?? "")} ${((percent ?? 0) * 100).toFixed(0)}%`
+              }
+            >
+              {zoneTotals.map((entry, index) => (
+                <Cell key={entry.zone} fill={zoneColors[index % zoneColors.length]} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ChartContainer>
       </div>
     </>
   );

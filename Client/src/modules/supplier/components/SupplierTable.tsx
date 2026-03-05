@@ -1,65 +1,88 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import HeaderCell from "@/shared/components/HeaderCell";
 import StatusBadge from "@/shared/components/StatusBadge";
 import Pagination from "@/shared/components/Pagination";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
 import { Eye, X } from "lucide-react";
-import { UsePartnerState } from "@/modules/supplier/store/UseGetPartner";
+import { useQuery } from "@tanstack/react-query";
+import {
+  getSupplierPartners,
+  getSupplierReplenishmentOrders,
+  type SupplierPartner,
+} from "@/modules/supplier/services/supplierManagement";
 
 const CSV_PDF_HEADERS = [
-  "ID",
+  "Supplier ID",
   "Partner",
   "Contact",
   "Email",
   "Active Orders",
-  "Rating",
+  "Created At",
   "Status",
 ];
 
-type Partner = {
-  id: number;
-  name: string;
-  contact: string;
-  email: string;
-  activeOrders: number;
-  rating: number;
-  status: string;
-};
+type PartnerView = SupplierPartner & { activeOrders: number };
 
 export default function SupplierTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [viewTarget, setViewTarget] = useState<Partner | null>(null);
+  const [viewTarget, setViewTarget] = useState<PartnerView | null>(null);
 
-  const MOCK_PARTNERS = UsePartnerState((s) => s.partner);
-  const totalLength = MOCK_PARTNERS.length;
-  const displayedData = MOCK_PARTNERS.slice(
+  const { data: partners = [] } = useQuery({
+    queryKey: ["supplier-partners"],
+    queryFn: getSupplierPartners,
+    retry: false,
+  });
+  const { data: orders = [] } = useQuery({
+    queryKey: ["supplier-replenishment-orders"],
+    queryFn: getSupplierReplenishmentOrders,
+    retry: false,
+  });
+
+  const partnersWithOrders = useMemo<PartnerView[]>(() => {
+    const orderCountByPartner = orders.reduce<Record<string, number>>(
+      (acc, item) => {
+        const key = item.partner.trim().toLowerCase();
+        acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      },
+      {},
+    );
+
+    return partners.map((partner) => ({
+      ...partner,
+      activeOrders: orderCountByPartner[partner.companyName.trim().toLowerCase()] ?? 0,
+    }));
+  }, [orders, partners]);
+
+  const totalLength = partnersWithOrders.length;
+  const displayedData = partnersWithOrders.slice(
     (currentPage - 1) * pageSize,
-    currentPage * pageSize
+    currentPage * pageSize,
   );
 
   const handleCSV = () => {
-    const rows = MOCK_PARTNERS.map((p) => [
-      `SUP-00${p.id}`,
-      p.name,
-      p.contact,
+    const rows = partnersWithOrders.map((p) => [
+      `SUP-${p.id.slice(0, 8).toUpperCase()}`,
+      p.companyName,
+      p.contactPerson,
       p.email,
       String(p.activeOrders),
-      String(p.rating),
+      new Date(p.createdAt).toLocaleDateString("en-US"),
       p.status,
     ]);
     exportToCSV("brand-partners", CSV_PDF_HEADERS, rows);
   };
 
   const handlePDF = () => {
-    const rows = MOCK_PARTNERS.map((p) => [
-      `SUP-00${p.id}`,
-      p.name,
-      p.contact,
+    const rows = partnersWithOrders.map((p) => [
+      `SUP-${p.id.slice(0, 8).toUpperCase()}`,
+      p.companyName,
+      p.contactPerson,
       p.email,
       String(p.activeOrders),
-      String(p.rating),
+      new Date(p.createdAt).toLocaleDateString("en-US"),
       p.status,
     ]);
     exportToPDF(
@@ -80,12 +103,19 @@ export default function SupplierTable() {
                 <HeaderCell label="Partner Profile" />
                 <HeaderCell label="Point of Contact" />
                 <HeaderCell label="Active Orders" />
-                <HeaderCell label="Reliability" />
+                <HeaderCell label="Created" />
                 <HeaderCell label="Status" />
                 <HeaderCell label="Actions" align="right" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {displayedData.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-6 text-sm text-slate-500 text-center">
+                    No supplier partners found.
+                  </td>
+                </tr>
+              )}
               {displayedData.map((partner) => (
                 <tr
                   key={partner.id}
@@ -94,25 +124,21 @@ export default function SupplierTable() {
                   <td className="p-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-xl">
-                        {partner.id === 1 ? (
-                          <i className="fa-solid fa-check text-[#001F3F]"></i>
-                        ) : (
-                          partner.name.charAt(0)
-                        )}
+                        {partner.companyName.charAt(0)}
                       </div>
                       <div>
                         <p className="text-sm font-bold text-[#001F3F]">
-                          {partner.name}
+                          {partner.companyName}
                         </p>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          ID: SUP-00{partner.id}
+                          ID: SUP-{partner.id.slice(0, 8).toUpperCase()}
                         </p>
                       </div>
                     </div>
                   </td>
                   <td className="p-3">
                     <p className="text-sm font-medium text-slate-600">
-                      {partner.contact}
+                      {partner.contactPerson || "-"}
                     </p>
                     <p className="text-xs text-slate-400">{partner.email}</p>
                   </td>
@@ -121,24 +147,13 @@ export default function SupplierTable() {
                       {partner.activeOrders}
                     </span>
                     <span className="text-xs text-slate-400 ml-1">
-                      In Transit
+                      In Pipeline
                     </span>
                   </td>
                   <td className="p-3">
-                    <div className="flex items-center gap-1">
-                      <i className="fa-solid fa-star text-[#FFD700] text-xs"></i>
-                      <span className="text-sm font-bold text-slate-700">
-                        {partner.rating}
-                      </span>
-                      <div className="w-16 h-1.5 bg-slate-100 rounded-full ml-2 overflow-hidden">
-                        <div
-                          className="h-full bg-green-500 rounded-full"
-                          style={{
-                            width: `${(partner.rating / 5) * 100}%`,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
+                    <span className="text-sm text-slate-600">
+                      {new Date(partner.createdAt).toLocaleDateString("en-US")}
+                    </span>
                   </td>
                   <td className="p-3">
                     <StatusBadge status={partner.status} />
@@ -202,10 +217,10 @@ export default function SupplierTable() {
                 </div>
                 <div>
                   <h4 className="text-lg font-bold text-[#001F3F]">
-                    {viewTarget.name}
+                    {viewTarget.companyName}
                   </h4>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    SUP-00{viewTarget.id}
+                    SUP-{viewTarget.id.slice(0, 8).toUpperCase()}
                   </p>
                 </div>
               </div>
@@ -217,7 +232,7 @@ export default function SupplierTable() {
                     Contact Person
                   </span>
                   <span className="text-sm font-medium text-slate-700">
-                    {viewTarget.contact}
+                    {viewTarget.contactPerson || "-"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
@@ -233,19 +248,16 @@ export default function SupplierTable() {
                     Active Orders
                   </span>
                   <span className="text-sm font-bold text-[#001F3F]">
-                    {viewTarget.activeOrders} In Transit
+                    {viewTarget.activeOrders} In Pipeline
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
                   <span className="text-xs font-bold text-slate-400 uppercase">
-                    Reliability Rating
+                    Created
                   </span>
-                  <div className="flex items-center gap-1">
-                    <i className="fa-solid fa-star text-[#FFD700] text-xs"></i>
-                    <span className="text-sm font-bold text-slate-700">
-                      {viewTarget.rating} / 5.0
-                    </span>
-                  </div>
+                  <span className="text-sm font-medium text-slate-700">
+                    {new Date(viewTarget.createdAt).toLocaleDateString("en-US")}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-3">
                   <span className="text-xs font-bold text-slate-400 uppercase">

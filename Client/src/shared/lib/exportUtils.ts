@@ -150,11 +150,11 @@ export async function exportBinQRCodesToPDF(
     binSize: string;
     qrCodeString: string;
   }>,
-) {
+): Promise<boolean> {
   try {
     if (!bins.length) {
       showErrorToast("No bin QR codes found to export.");
-      return;
+      return false;
     }
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -215,9 +215,10 @@ export async function exportBinQRCodesToPDF(
     }
 
     doc.save(`${filename}_${formatDateForFile()}.pdf`);
-    showSuccessToast("Bin QR PDF exported successfully.");
+    return true;
   } catch {
     showErrorToast("Failed to export bin QR PDF.");
+    return false;
   }
 }
 

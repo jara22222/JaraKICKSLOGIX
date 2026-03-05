@@ -16,32 +16,32 @@ type ConfirmationModalProps = {
 
 const VARIANT_STYLES = {
   danger: {
-    headerBg: "bg-red-50",
-    iconBg: "bg-red-100",
-    iconColor: "text-red-600",
-    noteBg: "bg-red-50",
-    noteBorder: "border-red-200",
-    noteText: "text-red-700",
+    headerBg: "bg-red-50 dark:bg-red-950/40",
+    iconBg: "bg-red-100 dark:bg-red-900/60",
+    iconColor: "text-red-600 dark:text-red-300",
+    noteBg: "bg-red-50 dark:bg-red-950/30",
+    noteBorder: "border-red-200 dark:border-red-800/70",
+    noteText: "text-red-700 dark:text-red-300",
     btnBg: "bg-red-500 hover:bg-red-600",
     btnShadow: "shadow-red-500/20",
   },
   warning: {
-    headerBg: "bg-amber-50",
-    iconBg: "bg-amber-100",
-    iconColor: "text-amber-600",
-    noteBg: "bg-amber-50",
-    noteBorder: "border-amber-200",
-    noteText: "text-amber-700",
+    headerBg: "bg-amber-50 dark:bg-amber-950/30",
+    iconBg: "bg-amber-100 dark:bg-amber-900/60",
+    iconColor: "text-amber-600 dark:text-amber-300",
+    noteBg: "bg-amber-50 dark:bg-amber-950/20",
+    noteBorder: "border-amber-200 dark:border-amber-800/70",
+    noteText: "text-amber-700 dark:text-amber-300",
     btnBg: "bg-amber-500 hover:bg-amber-600",
     btnShadow: "shadow-amber-500/20",
   },
   primary: {
-    headerBg: "bg-blue-50",
-    iconBg: "bg-blue-100",
-    iconColor: "text-blue-600",
-    noteBg: "bg-blue-50",
-    noteBorder: "border-blue-200",
-    noteText: "text-blue-700",
+    headerBg: "bg-blue-50 dark:bg-blue-950/30",
+    iconBg: "bg-blue-100 dark:bg-blue-900/60",
+    iconColor: "text-blue-600 dark:text-blue-300",
+    noteBg: "bg-blue-50 dark:bg-blue-950/20",
+    noteBorder: "border-blue-200 dark:border-blue-800/70",
+    noteText: "text-blue-700 dark:text-blue-300",
     btnBg: "bg-[#001F3F] hover:bg-[#00162e]",
     btnShadow: "shadow-blue-900/20",
   },
@@ -70,10 +70,10 @@ export default function ConfirmationModal({
         onClick={onClose}
       ></div>
 
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden mx-4">
+      <div className="relative w-full max-w-md bg-white dark:bg-[#0f1c33] rounded-2xl shadow-2xl overflow-hidden mx-4 border border-slate-100 dark:border-slate-700/60">
         {/* Header */}
         <div
-          className={`p-6 border-b border-slate-100 flex justify-between items-center ${v.headerBg}`}
+          className={`p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center ${v.headerBg}`}
         >
           <div className="flex items-center gap-3">
             <div
@@ -85,11 +85,11 @@ export default function ConfirmationModal({
                 <AlertTriangle className={`size-5 ${v.iconColor}`} />
               )}
             </div>
-            <h3 className="text-lg font-bold text-[#001F3F]">{title}</h3>
+            <h3 className="text-lg font-bold text-[#001F3F] dark:text-slate-100">{title}</h3>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-red-500 transition-colors"
+            className="text-slate-400 dark:text-slate-300 hover:text-red-500 transition-colors"
           >
             <X className="size-5" />
           </button>
@@ -97,7 +97,7 @@ export default function ConfirmationModal({
 
         {/* Body */}
         <div className="p-8">
-          <p className="text-sm text-slate-600 leading-relaxed">
+          <p className="text-sm text-slate-600 dark:text-slate-200 leading-relaxed">
             {description}
           </p>
 
@@ -114,10 +114,10 @@ export default function ConfirmationModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+        <div className="p-6 border-t border-slate-100 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-slate-500 uppercase hover:text-slate-700 transition-colors"
+            className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-200 uppercase hover:text-slate-700 dark:hover:text-white transition-colors"
           >
             Cancel
           </button>

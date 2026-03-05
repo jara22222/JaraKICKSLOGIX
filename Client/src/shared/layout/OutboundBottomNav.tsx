@@ -1,20 +1,20 @@
 import {
   LayoutDashboard,
-  ScanLine,
   ClipboardList,
-  Activity,
+  LogOut,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { UseAuth } from "@/shared/security/UseAuth";
+import ThemeToggleButton from "../theme/ThemeToggleButton";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Home", path: "/outbound" },
-  { icon: ScanLine, label: "Reassign", path: "/outbound/reassign" },
-  { icon: ClipboardList, label: "Pick List", path: "/outbound/picklist" },
-  { icon: Activity, label: "Log", path: "/outbound/activity" },
+  { icon: ClipboardList, label: "Process", path: "/outbound/picklist" },
 ];
 
 export default function OutboundBottomNav() {
   const location = useLocation();
+  const { logout } = UseAuth();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#001F3F] border-t border-white/10 shadow-[0_-4px_24px_rgba(0,31,63,0.3)] safe-area-bottom">
@@ -54,6 +54,17 @@ export default function OutboundBottomNav() {
             </Link>
           );
         })}
+        <button
+          type="button"
+          onClick={logout}
+          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-[64px] text-slate-400 active:scale-95"
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:bg-white/5">
+            <LogOut className="size-5" />
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider">Logout</span>
+        </button>
+        <ThemeToggleButton className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-[64px] text-slate-400 active:scale-95" />
       </div>
     </nav>
   );

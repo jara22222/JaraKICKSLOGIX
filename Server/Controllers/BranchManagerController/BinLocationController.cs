@@ -24,7 +24,7 @@ namespace Server.Controllers
             return $"http://localhost:5173/binlocation/product/{binId}";
         }
 
-        [Authorize(Roles = "BranchManager,SuperAdmin")]
+        [Authorize(Roles = "BranchManager,SuperAdmin,Receiver")]
         [HttpGet("get-bins")]
         public async Task<ActionResult<List<BinLocationListItemDto>>> GetAsync()
         {
@@ -40,6 +40,7 @@ namespace Server.Controllers
                         BinStatus = bin.BinStatus,
                         BinSize = bin.BinSize,
                         BinCapacity = bin.BinCapacity,
+                        OccupiedQty = bin.OccupiedQty,
                         QrCodeString = bin.QrCodeString,
                         CreatedAt = bin.CreatedAt,
                         UpdatedAt = bin.UpdatedAt
@@ -73,6 +74,7 @@ namespace Server.Controllers
                         BinStatus = bin.BinStatus,
                         BinSize = bin.BinSize,
                         BinCapacity = bin.BinCapacity,
+                        OccupiedQty = bin.OccupiedQty,
                         QrCodeString = bin.QrCodeString,
                         CreatedAt = bin.CreatedAt,
                         UpdatedAt = bin.UpdatedAt
@@ -105,6 +107,7 @@ namespace Server.Controllers
                         BinStatus = item.BinStatus,
                         BinSize = item.BinSize,
                         BinCapacity = item.BinCapacity,
+                        OccupiedQty = item.OccupiedQty,
                         QrCodeString = item.QrCodeString,
                         CreatedAt = item.CreatedAt,
                         UpdatedAt = item.UpdatedAt

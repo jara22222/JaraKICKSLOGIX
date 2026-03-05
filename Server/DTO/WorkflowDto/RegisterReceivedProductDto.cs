@@ -22,5 +22,8 @@ namespace Server.DTO.WorkflowDto
 
         [Range(1, int.MaxValue)]
         public int Quantity { get; set; }
+
+        [StringLength(128)]
+        public string? SelectedBinId { get; set; }
     }
 }

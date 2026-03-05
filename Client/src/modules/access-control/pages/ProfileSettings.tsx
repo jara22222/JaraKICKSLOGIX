@@ -1,10 +1,13 @@
 import AcessControllHeader from "@/shared/layout/Header";
+import InboundHeader from "@/modules/inbound/components/InboundHeader";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 export default function ProfileSettings() {
+  const location = useLocation();
   const userJson = localStorage.getItem("user");
   let user: {
     firstName?: string;
@@ -57,10 +60,18 @@ export default function ProfileSettings() {
 
   return (
     <>
-      <AcessControllHeader
-        title="Account Settings"
-        label="Manage your profile details"
-      />
+      {location.pathname.startsWith("/accesscontroll") && (
+        <AcessControllHeader
+          title="Account Settings"
+          label="Manage your profile details"
+        />
+      )}
+      {location.pathname.startsWith("/inbound") && (
+        <InboundHeader
+          title="Account Settings"
+          label="Manage your profile details"
+        />
+      )}
       <div className="flex-1 overflow-y-auto p-6 lg:p-8 bg-slate-50/60">
         <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">

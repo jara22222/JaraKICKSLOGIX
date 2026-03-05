@@ -127,7 +127,7 @@ namespace Server.Controllers
                     select new SupplierListItemDto
                     {
                         Id = user.Id,
-                        CompanyName = user.UserName,
+                        CompanyName = user.UserName ?? string.Empty,
                         CompanyAddress = user.Address,
                         ContactPerson = user.FirstName,
                         Email = user.Email ?? string.Empty,

@@ -1,4 +1,5 @@
 import apiClient from "@/services/apiClient";
+import type { AxiosRequestConfig } from "axios";
 
 export type BinStatus = "Available" | "Occupied";
 export type BinSize = "S" | "M" | "L" | "XL" | "XXL";
@@ -9,6 +10,7 @@ export interface BinLocationItemResponse {
   binStatus: string;
   binSize: string;
   binCapacity: number;
+  occupiedQty: number;
   qrCodeString: string;
   createdAt: string;
   updatedAt: string;
@@ -17,7 +19,6 @@ export interface BinLocationItemResponse {
 export interface CreateBinLocationPayload {
   binLocation: string;
   binSize: BinSize;
-  binCapacity: number;
 }
 
 export interface UpdateBinLocationPayload extends CreateBinLocationPayload {
@@ -28,9 +29,12 @@ export interface BinLocationMessageResponse {
   message: string;
 }
 
-export const getBinLocations = async (): Promise<BinLocationItemResponse[]> => {
+export const getBinLocations = async (
+  config?: AxiosRequestConfig & { suppressErrorToast?: boolean },
+): Promise<BinLocationItemResponse[]> => {
   const { data } = await apiClient.get<BinLocationItemResponse[]>(
     "/api/BinLocation/get-bins",
+    config,
   );
   return data;
 };

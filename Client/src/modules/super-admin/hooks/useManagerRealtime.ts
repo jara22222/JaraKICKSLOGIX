@@ -13,6 +13,9 @@ export const useManagerRealtime = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("token") ?? "";
+    if (!token) {
+      return;
+    }
     let isDisposed = false;
 
     const connection = new HubConnectionBuilder()
@@ -21,7 +24,7 @@ export const useManagerRealtime = () => {
         withCredentials: false,
       })
       .withAutomaticReconnect()
-      .configureLogging(LogLevel.Warning)
+      .configureLogging(LogLevel.None)
       .build();
 
     connection.on("ReceiveNewBranchManager", () => {
@@ -29,16 +32,17 @@ export const useManagerRealtime = () => {
     });
 
     const startConnection = async () => {
+      if (isDisposed) return;
       try {
         await connection.start();
       } catch (error) {
         if (isDisposed) return;
 
         const message =
-          error instanceof Error ? error.message : "Unknown connection error";
+          error instanceof Error ? error.message.toLowerCase() : "unknown connection error";
 
         // React StrictMode may stop a dev connection during setup.
-        if (message.includes("stopped during negotiation")) return;
+        if (message.includes("stopped during negotiation") || message.includes("aborted")) return;
 
         showErrorToast("Realtime connection failed for managers.");
       }
@@ -49,7 +53,10 @@ export const useManagerRealtime = () => {
     return () => {
       isDisposed = true;
       connection.off("ReceiveNewBranchManager");
-      if (connection.state !== HubConnectionState.Disconnected) {
+      if (
+        connection.state === HubConnectionState.Connected ||
+        connection.state === HubConnectionState.Reconnecting
+      ) {
         void connection.stop().catch(() => undefined);
       }
     };

@@ -1,17 +1,24 @@
-import { useInboundStore } from "@/modules/inbound/store/UseInboundStore";
 import HeaderCell from "@/shared/components/HeaderCell";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import Pagination from "@/shared/components/Pagination";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
-import { PackageCheck, Eye, Truck, MapPin } from "lucide-react";
+import { getInboundIncomingShipments } from "@/modules/inbound/services/inboundData";
+import {
+  formatInboundStatus,
+  getInboundStatusBadgeClass,
+} from "@/modules/inbound/utils/statusFormat";
+import { PackageCheck, Truck, MapPin } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export default function IncomingShipmentsTable() {
-  const { incomingShipments, userRole, setAcceptTarget } = useInboundStore();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
-  const isCoordinator = userRole === "inbound_coordinator";
+  const { data: incomingShipments = [] } = useQuery({
+    queryKey: ["inbound-incoming-shipments"],
+    queryFn: getInboundIncomingShipments,
+    retry: false,
+  });
 
   // Only show non-accepted shipments
   const activeShipments = incomingShipments.filter(
@@ -60,19 +67,6 @@ export default function IncomingShipmentsTable() {
       exportRows
     );
 
-  const statusStyles = (status: string) => {
-    switch (status) {
-      case "Arrived":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      case "In Transit":
-        return "bg-blue-50 text-blue-700 border-blue-200";
-      case "Accepted":
-        return "bg-green-50 text-green-700 border-green-200";
-      default:
-        return "bg-slate-100 text-slate-500 border-slate-200";
-    }
-  };
-
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
@@ -85,7 +79,6 @@ export default function IncomingShipmentsTable() {
               <HeaderCell label="Quantity" />
               <HeaderCell label="ETA" />
               <HeaderCell label="Status" />
-              <HeaderCell label="Actions" align="right" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -143,7 +136,9 @@ export default function IncomingShipmentsTable() {
                 </td>
                 <td className="p-3">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusStyles(shipment.status)}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${getInboundStatusBadgeClass(
+                      shipment.status,
+                    )}`}
                   >
                     {shipment.status === "In Transit" && (
                       <Truck className="size-3" />
@@ -152,31 +147,8 @@ export default function IncomingShipmentsTable() {
                       <PackageCheck className="size-3" />
                     )}
                     <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
-                    {shipment.status}
+                    {formatInboundStatus(shipment.status)}
                   </span>
-                </td>
-                <td className="p-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    {isCoordinator && shipment.status === "Arrived" ? (
-                      <button
-                        onClick={() => setAcceptTarget(shipment)}
-                        className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-emerald-700 shadow-sm transition-all hover:-translate-y-0.5 flex items-center gap-1.5"
-                      >
-                        <PackageCheck className="size-3.5" />
-                        Accept
-                      </button>
-                    ) : shipment.status === "Arrived" ? (
-                      <span className="px-3 py-1.5 bg-slate-100 text-slate-400 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center gap-1.5 cursor-not-allowed">
-                        <Eye className="size-3.5" />
-                        View Only
-                      </span>
-                    ) : (
-                      <span className="px-3 py-1.5 bg-slate-50 text-slate-400 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center gap-1.5">
-                        <Truck className="size-3.5" />
-                        Awaiting
-                      </span>
-                    )}
-                  </div>
                 </td>
               </tr>
             ))}
