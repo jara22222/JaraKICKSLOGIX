@@ -1,5 +1,6 @@
 import AcessControllHeader from "@/shared/layout/Header";
 import OutBoundTable from "@/modules/outbound/components/OutboundTable";
+import { getHubUrl } from "@/shared/config/api";
 import DateFilter from "@/shared/components/DateFilter";
 import SearchToolBar from "@/shared/components/SearchToolBar";
 import HeaderCell from "@/shared/components/HeaderCell";
@@ -9,9 +10,15 @@ import {
   getPendingBranchOrders,
 } from "@/modules/outbound/services/branchManagerOrder";
 import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
+import {
+  HubConnectionBuilder,
+  HubConnectionState,
+  type HubConnection,
+  LogLevel,
+} from "@microsoft/signalr";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatInboundStatus } from "@/modules/inbound/utils/statusFormat";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ConfirmationModal from "@/shared/components/ConfirmationModal";
 import { PackageCheck, XCircle } from "lucide-react";
 
@@ -52,6 +59,62 @@ export default function OutboundManagement() {
       showErrorToast(error?.response?.data?.message || "Failed to cancel order.");
     },
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token") ?? "";
+    if (!token) return;
+
+    let isDisposed = false;
+    const retryTimers = new Set<ReturnType<typeof setTimeout>>();
+    const connection = new HubConnectionBuilder()
+      .withUrl(getHubUrl("branch-notificationHub"), {
+        accessTokenFactory: () => token,
+        withCredentials: false,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.None)
+      .build();
+
+    const refreshOutboundQueues = () => {
+      void queryClient.invalidateQueries({ queryKey: ["branch-manager-pending-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["branch-manager-outbound-logs"] });
+      void queryClient.invalidateQueries({ queryKey: ["dispatch-approved-orders"] });
+    };
+
+    connection.on("OutboundQueueUpdated", refreshOutboundQueues);
+    connection.on("OutboundOrderApproved", refreshOutboundQueues);
+
+    const startConnectionWithRetry = (hub: HubConnection, delayMs = 1000) => {
+      if (isDisposed) return;
+      void hub.start().catch(() => {
+        if (isDisposed) return;
+        const nextDelay = Math.min(delayMs * 2, 10000);
+        const timer = setTimeout(() => {
+          retryTimers.delete(timer);
+          startConnectionWithRetry(hub, nextDelay);
+        }, delayMs);
+        retryTimers.add(timer);
+      });
+    };
+
+    startConnectionWithRetry(connection);
+
+    return () => {
+      isDisposed = true;
+      connection.off("OutboundQueueUpdated", refreshOutboundQueues);
+      connection.off("OutboundOrderApproved", refreshOutboundQueues);
+      if (
+        connection.state === HubConnectionState.Connected ||
+        connection.state === HubConnectionState.Reconnecting
+      ) {
+        void connection.stop().catch(() => undefined);
+      }
+      for (const timer of retryTimers) {
+        clearTimeout(timer);
+      }
+      retryTimers.clear();
+    };
+  }, [queryClient]);
 
   return (
     <>
