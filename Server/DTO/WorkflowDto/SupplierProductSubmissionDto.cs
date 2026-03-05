@@ -7,6 +7,7 @@ namespace Server.DTO.WorkflowDto
         [StringLength(120)]
         public string? SupplierName { get; set; } = string.Empty;
 
+        [Required]
         [StringLength(80)]
         public string? Branch { get; set; } = string.Empty;
 

@@ -37,6 +37,14 @@ namespace Server.Controllers.SupplierEndpoints
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(dto.Branch))
+                {
+                    return BadRequest(new ApiMessageDto
+                    {
+                        Message = "Branch is required. Please provide the target branch in the submit-product payload."
+                    });
+                }
+
                 var authUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
                 var authenticatedUser = !string.IsNullOrWhiteSpace(authUserId)
                     ? await _context.Users.FirstOrDefaultAsync(user => user.Id == authUserId)
@@ -44,11 +52,7 @@ namespace Server.Controllers.SupplierEndpoints
                 var supplierName = string.IsNullOrWhiteSpace(dto.SupplierName)
                     ? (authenticatedUser?.UserName ?? "ExternalSupplier")
                     : dto.SupplierName.Trim();
-                var branch = !string.IsNullOrWhiteSpace(dto.Branch)
-                    ? dto.Branch!.Trim()
-                    : !string.IsNullOrWhiteSpace(authenticatedUser?.Branch)
-                    ? authenticatedUser!.Branch
-                    : await ResolveDefaultBranchAsync();
+                var branch = dto.Branch.Trim();
                 var actorUserId = !string.IsNullOrWhiteSpace(authenticatedUser?.Id)
                     ? authenticatedUser!.Id
                     : await ResolveFallbackUserIdAsync();
