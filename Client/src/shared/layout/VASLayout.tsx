@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import VASSidebar from "./VASSidebar";
 import VASMobileSidebar from "./VASMobileSidebar";
 import RoleNotificationBell from "./RoleNotificationBell";
+import RealtimeStatusBadge from "./RealtimeStatusBadge";
 import { useRoleRealtimeSync } from "@/shared/hooks/useRoleRealtimeSync";
 
 export default function VASLayout() {
@@ -12,6 +13,7 @@ export default function VASLayout() {
       <VASMobileSidebar />
       <VASSidebar />
       <RoleNotificationBell storageKey="kickslogix-vas-notifications" />
+      <RealtimeStatusBadge rightOffsetClass="right-16" />
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         <Outlet />
       </main>

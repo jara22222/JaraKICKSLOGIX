@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import OutboundSidebar from "./OutboundSidebar";
 import OutboundMobileSidebar from "./OutboundMobileSidebar";
 import RoleNotificationBell from "./RoleNotificationBell";
+import RealtimeStatusBadge from "./RealtimeStatusBadge";
 import { useRoleRealtimeSync } from "@/shared/hooks/useRoleRealtimeSync";
 
 export default function OutboundLayout() {
@@ -12,6 +13,7 @@ export default function OutboundLayout() {
       <OutboundMobileSidebar />
       <OutboundSidebar />
       <RoleNotificationBell storageKey="kickslogix-dispatch-notifications" />
+      <RealtimeStatusBadge rightOffsetClass="right-16" />
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         <Outlet />
       </main>
