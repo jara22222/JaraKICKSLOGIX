@@ -40,6 +40,8 @@ export const useRoleRealtimeSync = (scope: RealtimeScope) => {
       ["branch-manager-approved-orders"],
       ["branch-manager-outbound-logs"],
       ["branch-manager-inventory-items"],
+      ["branch-employees"],
+      ["branch-archived-employees"],
       ["branchmanager-bins"],
       ["branchmanager-archived-bins"],
       ["branch-manager-audit-logs"],
@@ -98,10 +100,12 @@ export const useRoleRealtimeSync = (scope: RealtimeScope) => {
     branchNotificationConnection.on("OutboundQueueUpdated", refreshScope);
     branchNotificationConnection.on("VASQueueUpdated", refreshScope);
     branchNotificationConnection.on("LowStockAlert", refreshScope);
+    branchNotificationConnection.on("BinLocationUpdated", refreshScope);
 
     const branchAccountConnection = createHubConnection("branchAccount-managerHub", token);
     branchAccountConnection.on("PasswordResetRequested", refreshScope);
     branchAccountConnection.on("ReceiveNewBranchUser", refreshScope);
+    branchAccountConnection.on("BranchUserStatusChanged", refreshScope);
 
     const connections: HubConnection[] = [branchNotificationConnection, branchAccountConnection];
 
@@ -154,8 +158,10 @@ export const useRoleRealtimeSync = (scope: RealtimeScope) => {
       branchNotificationConnection.off("OutboundQueueUpdated", refreshScope);
       branchNotificationConnection.off("VASQueueUpdated", refreshScope);
       branchNotificationConnection.off("LowStockAlert", refreshScope);
+      branchNotificationConnection.off("BinLocationUpdated", refreshScope);
       branchAccountConnection.off("PasswordResetRequested", refreshScope);
       branchAccountConnection.off("ReceiveNewBranchUser", refreshScope);
+      branchAccountConnection.off("BranchUserStatusChanged", refreshScope);
 
       for (const connection of connections) {
         if (

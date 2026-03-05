@@ -362,6 +362,14 @@ namespace Server.Controllers
             });
             await _context.SaveChangesAsync();
 
+            await _hubContext.Clients.All.SendAsync("BranchUserStatusChanged", new
+            {
+                userId = targetUser.Id,
+                status = targetUser.IsActive,
+                branch = currentBranch,
+                updatedAt = DateTime.UtcNow
+            });
+
             return Ok(new { message = "Branch employee archived successfully." });
         }
 
@@ -410,6 +418,14 @@ namespace Server.Controllers
                 DatePerformed = DateTime.UtcNow
             });
             await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.All.SendAsync("BranchUserStatusChanged", new
+            {
+                userId = targetUser.Id,
+                status = targetUser.IsActive,
+                branch = currentBranch,
+                updatedAt = DateTime.UtcNow
+            });
 
             return Ok(new { message = "Branch employee restored successfully." });
         }

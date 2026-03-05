@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.DTO;
+using Server.Hubs.BranchManagerHub;
 using Server.Models;
 using Server.Utilities;
 using System.Security.Claims;
@@ -14,6 +16,7 @@ namespace Server.Controllers
     public class BinLocationController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHubContext<BranchNotificationHub> _notificationHub;
         private static readonly IReadOnlyDictionary<string, int> FixedCapacityBySize =
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
@@ -24,9 +27,12 @@ namespace Server.Controllers
                 ["XXL"] = 100
             };
 
-        public BinLocationController(ApplicationDbContext context)
+        public BinLocationController(
+            ApplicationDbContext context,
+            IHubContext<BranchNotificationHub> notificationHub)
         {
             _context = context;
+            _notificationHub = notificationHub;
         }
 
         private static string BuildQrCodeString(string binId, string binLocation)
@@ -262,6 +268,13 @@ namespace Server.Controllers
                 });
 
                 await _context.SaveChangesAsync();
+                await _notificationHub.Clients.All.SendAsync("BinLocationUpdated", new
+                {
+                    binId = bin.BinId,
+                    status = bin.BinStatus,
+                    branch = branchName,
+                    updatedAt = DateTime.UtcNow
+                });
 
                 return Ok(new ApiMessageDto { Message = "Bin location created successfully." });
             }
@@ -339,6 +352,13 @@ namespace Server.Controllers
                 });
 
                 await _context.SaveChangesAsync();
+                await _notificationHub.Clients.All.SendAsync("BinLocationUpdated", new
+                {
+                    binId = bin.BinId,
+                    status = bin.BinStatus,
+                    branch = bin.Branch,
+                    updatedAt = DateTime.UtcNow
+                });
                 return Ok(new ApiMessageDto { Message = "Bin location updated successfully." });
             }
             catch (Exception ex)
@@ -396,6 +416,13 @@ namespace Server.Controllers
                 });
 
                 await _context.SaveChangesAsync();
+                await _notificationHub.Clients.All.SendAsync("BinLocationUpdated", new
+                {
+                    binId = bin.BinId,
+                    status = bin.BinStatus,
+                    branch = bin.Branch,
+                    updatedAt = DateTime.UtcNow
+                });
                 return Ok(new ApiMessageDto { Message = "Bin location archived successfully." });
             }
             catch (Exception ex)
@@ -439,6 +466,13 @@ namespace Server.Controllers
                 });
 
                 await _context.SaveChangesAsync();
+                await _notificationHub.Clients.All.SendAsync("BinLocationUpdated", new
+                {
+                    binId = bin.BinId,
+                    status = bin.BinStatus,
+                    branch = bin.Branch,
+                    updatedAt = DateTime.UtcNow
+                });
                 return Ok(new ApiMessageDto { Message = "Bin location restored successfully." });
             }
             catch (Exception ex)
