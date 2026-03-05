@@ -44,6 +44,7 @@ namespace Server.Controllers.ReceiverController
                 var normalizedSize = dto.Size.Trim().ToUpperInvariant();
                 var normalizedSku = dto.SKU.Trim().ToUpperInvariant();
                 var normalizedProductName = dto.ProductName.Trim();
+                var normalizedSupplierName = dto.Supplier.Trim();
                 var requiredUnits = dto.Quantity;
                 var selectedBinId = dto.SelectedBinId?.Trim();
                 var shipmentId = dto.ShipmentId?.Trim();
@@ -89,7 +90,8 @@ namespace Server.Controllers.ReceiverController
                                 item.WorkflowStatus != "Archived" &&
                                 (item.SKU != normalizedSku ||
                                  item.Size != normalizedSize ||
-                                 (item.ProductName ?? string.Empty).ToUpper() != normalizedProductName.ToUpper())) &&
+                                 (item.ProductName ?? string.Empty).ToUpper() != normalizedProductName.ToUpper() ||
+                                 (item.SupplierName ?? string.Empty).ToUpper() != normalizedSupplierName.ToUpper())) &&
                             (bin.BinCapacity - bin.OccupiedQty) >= requiredUnits
                         )
                         .OrderBy(bin => (bin.BinCapacity - bin.OccupiedQty))
@@ -110,7 +112,8 @@ namespace Server.Controllers.ReceiverController
                                 item.WorkflowStatus != "Archived" &&
                                 (item.SKU != normalizedSku ||
                                  item.Size != normalizedSize ||
-                                 (item.ProductName ?? string.Empty).ToUpper() != normalizedProductName.ToUpper())) &&
+                                 (item.ProductName ?? string.Empty).ToUpper() != normalizedProductName.ToUpper() ||
+                                 (item.SupplierName ?? string.Empty).ToUpper() != normalizedSupplierName.ToUpper())) &&
                             (bin.BinCapacity - bin.OccupiedQty) > 0
                         )
                         .OrderByDescending(bin => (bin.BinCapacity - bin.OccupiedQty))
@@ -134,12 +137,13 @@ namespace Server.Controllers.ReceiverController
                     item.ProductId != shipmentId &&
                     (item.SKU != normalizedSku ||
                      item.Size != normalizedSize ||
-                     (item.ProductName ?? string.Empty).ToUpper() != normalizedProductName.ToUpper()));
+                     (item.ProductName ?? string.Empty).ToUpper() != normalizedProductName.ToUpper() ||
+                     (item.SupplierName ?? string.Empty).ToUpper() != normalizedSupplierName.ToUpper()));
                 if (hasConflictingProductInSelectedBin)
                 {
                     return BadRequest(new ApiMessageDto
                     {
-                        Message = "Selected bin already contains a different SKU, product name, or size. Please choose another bin."
+                        Message = "Selected bin already contains a different SKU, product name, supplier, or size. Please choose another bin."
                     });
                 }
 
@@ -159,6 +163,7 @@ namespace Server.Controllers.ReceiverController
                         item.SKU == normalizedSku &&
                         item.Size == normalizedSize &&
                         (item.ProductName ?? string.Empty).ToUpper() == normalizedProductName.ToUpper() &&
+                        (item.SupplierName ?? string.Empty).ToUpper() == normalizedSupplierName.ToUpper() &&
                         item.WorkflowStatus != "Archived")
                     .OrderByDescending(item => item.UpdatedAt ?? item.DateReceived)
                     .FirstOrDefaultAsync();
@@ -186,7 +191,7 @@ namespace Server.Controllers.ReceiverController
                 }
                 else
                 {
-                    product.SupplierName = dto.Supplier.Trim();
+                    product.SupplierName = normalizedSupplierName;
                     product.ProductName = normalizedProductName;
                     product.ItemQty = dto.Quantity.ToString();
                     product.QuantityOnHand = dto.Quantity;

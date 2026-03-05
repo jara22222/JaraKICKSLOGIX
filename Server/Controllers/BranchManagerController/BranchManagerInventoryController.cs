@@ -110,6 +110,7 @@ namespace Server.Controllers.BranchManagerController
                             : "Unassigned",
                         SKU = item.SKU ?? string.Empty,
                         SupplierName = item.SupplierName ?? "Unknown Supplier",
+                        ProductName = item.ProductName ?? string.Empty,
                         ItemBatchName = string.IsNullOrWhiteSpace(item.ProductName)
                             ? item.SKU
                             : item.ProductName,
