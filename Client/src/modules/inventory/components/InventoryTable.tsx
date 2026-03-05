@@ -24,6 +24,7 @@ const CSV_PDF_HEADERS = [
   "Bin Status",
   "SKU",
   "Supplier Name",
+  "Product Name",
   "Item Batch Name",
   "Batch Qty",
   "Total Product Qty",
@@ -127,6 +128,7 @@ export default function InvetorTable() {
       item.binStatus,
       item.sku,
       item.supplierName,
+      item.productName,
       item.itemBatchName,
       String(item.batchQty),
       String(item.totalProductQty),
@@ -145,6 +147,7 @@ export default function InvetorTable() {
       item.binStatus,
       item.sku,
       item.supplierName,
+      item.productName,
       item.itemBatchName,
       String(item.batchQty),
       String(item.totalProductQty),
@@ -185,6 +188,7 @@ export default function InvetorTable() {
                   SKU {item.sku} · Size {item.size}
                 </p>
                 <p className="mt-2 text-xs text-slate-600">Supplier: {item.supplierName}</p>
+                <p className="mt-1 text-xs text-slate-600">Product: {item.productName}</p>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                   <div className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
                     <p className="text-slate-400">Batch Qty</p>
@@ -246,13 +250,14 @@ export default function InvetorTable() {
           )}
         </div>
         <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full min-w-[1200px] text-left border-collapse">
+          <table className="w-full min-w-[1320px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100">
                 <HeaderCell label="Bin Location" />
                 <HeaderCell label="Bin Status" />
                 <HeaderCell label="SKU" />
                 <HeaderCell label="Supplier Name" />
+                <HeaderCell label="Product Name" />
                 <HeaderCell label="Item Batch Name" />
                 <HeaderCell label="Batch Qty" />
                 <HeaderCell label="Total Product Qty" />
@@ -266,13 +271,13 @@ export default function InvetorTable() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={12} className="p-4 text-sm text-slate-500 text-center">
+                  <td colSpan={13} className="p-4 text-sm text-slate-500 text-center">
                     Loading inventory...
                   </td>
                 </tr>
               ) : displayedData.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="p-4 text-sm text-slate-500 text-center">
+                  <td colSpan={13} className="p-4 text-sm text-slate-500 text-center">
                     No inventory items found.
                   </td>
                 </tr>
@@ -308,6 +313,9 @@ export default function InvetorTable() {
                     </td>
                     <td className="p-3">
                       <span className="text-sm text-slate-700">{item.supplierName}</span>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-sm text-slate-700">{item.productName}</span>
                     </td>
                     <td className="p-3">
                       <span className="text-sm font-medium text-slate-700">

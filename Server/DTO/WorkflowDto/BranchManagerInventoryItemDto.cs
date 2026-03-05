@@ -7,6 +7,7 @@ namespace Server.DTO.WorkflowDto
         public string BinStatus { get; set; } = string.Empty;
         public string SKU { get; set; } = string.Empty;
         public string SupplierName { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
         public string ItemBatchName { get; set; } = string.Empty;
         public int BatchQty { get; set; }
         public int TotalProductQty { get; set; }
