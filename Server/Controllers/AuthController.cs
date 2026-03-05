@@ -7,6 +7,7 @@ using Server.Data;
 using Server.Models;
 using Server.Services;
 using Server.Hubs.BranchManagerHub;
+using Server.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -178,7 +179,7 @@ namespace Server.Controllers
                         : $"{candidate.UserName ?? candidate.Email} submitted a password reset request for branch verification."
                 });
 
-                await _branchAccountHubContext.Clients.All.SendAsync("PasswordResetRequested", new
+                await _branchAccountHubContext.SendToBranchAndSuperAdminAsync(candidate.Branch, "PasswordResetRequested", new
                 {
                     branch = string.IsNullOrWhiteSpace(candidate.Branch) ? "N/A" : candidate.Branch,
                     userEmail = candidate.Email ?? normalizedEmail,
@@ -225,7 +226,7 @@ namespace Server.Controllers
                         Description = $"{normalizedEmail} submitted a password reset request but no eligible account was matched."
                     });
 
-                    await _branchAccountHubContext.Clients.All.SendAsync("PasswordResetRequested", new
+                    await _branchAccountHubContext.SendToBranchAndSuperAdminAsync("N/A", "PasswordResetRequested", new
                     {
                         branch = "N/A",
                         userEmail = normalizedEmail,

@@ -10,6 +10,7 @@ using Server.Data;
 using System.Security.Claims;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
+using Server.Utilities;
 namespace Server.Controllers
 
 {   [Route("api/[controller]")]
@@ -89,10 +90,10 @@ namespace Server.Controllers
                         Status = "Active",
                         Message = "A new branch manager has joined!"
                     };
-                    await _managerHubContext.Clients.All.SendAsync("ManagerCreated", managerHubEvent);
+                    await _managerHubContext.SendToSuperAdminAsync("ManagerCreated", managerHubEvent);
 
                     // Keep legacy event for existing client listeners.
-                    await _legacySupplierHubContext.Clients.All.SendAsync("ReceiveNewBranchManager", managerHubEvent);
+                    await _legacySupplierHubContext.SendToSuperAdminAsync("ReceiveNewBranchManager", managerHubEvent);
 
                     var clientBaseUrl =
                         _configuration["App:ClientBaseUrl"] ??

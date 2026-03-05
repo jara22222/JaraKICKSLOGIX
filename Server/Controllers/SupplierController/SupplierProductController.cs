@@ -94,6 +94,7 @@ namespace Server.Controllers.SupplierEndpoints
                         QrString = $"PRODUCT:{normalizedSku}:{IdGenerator.RandomBase36(10)}",
                         CriticalThreshold = GetThresholdBySize(normalizedSize),
                         WorkflowStatus = "PendingAdminApproval",
+                        Branch = branch,
                         BinId = null,
                         IsBinAssigned = false,
                         DateReceived = DateTime.UtcNow,
@@ -107,6 +108,7 @@ namespace Server.Controllers.SupplierEndpoints
                     product.QuantityOnHand += dto.Quantity;
                     product.ItemQty = product.QuantityOnHand.ToString();
                     product.SupplierName = supplierName;
+                    product.Branch = branch;
                     product.UpdatedAt = DateTime.UtcNow;
                 }
                 _context.StockMovements.Add(new StockMovement
@@ -137,7 +139,7 @@ namespace Server.Controllers.SupplierEndpoints
                 });
 
                 await _context.SaveChangesAsync();
-                await _notificationHub.Clients.All.SendAsync("InboundShipmentSubmitted", new
+                await _notificationHub.SendToBranchAndSuperAdminAsync(branch, "InboundShipmentSubmitted", new
                 {
                     productId = product.ProductId,
                     sku = product.SKU,

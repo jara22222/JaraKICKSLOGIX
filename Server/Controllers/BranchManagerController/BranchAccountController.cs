@@ -9,6 +9,7 @@ using Server.DTO.BranchAccountDto;
 using Server.Models;
 using Server.Services;
 using Server.Data;  
+using Server.Utilities;
 using System.Security.Claims;
 using System.Text;
 namespace Server.Controllers
@@ -104,7 +105,7 @@ namespace Server.Controllers
 
                     await _userManager.AddToRoleAsync(newManagerUser,roleName);
 
-                    await _hubContext.Clients.All.SendAsync("ReceiveNewBranchUser", new
+                    await _hubContext.SendToBranchAndSuperAdminAsync(branchName, "ReceiveNewBranchUser", new
                     {
                         UserName =accountName,
                         Email = branchAccountDto.Email,
@@ -376,7 +377,7 @@ namespace Server.Controllers
             });
             await _context.SaveChangesAsync();
 
-            await _hubContext.Clients.All.SendAsync("BranchUserStatusChanged", new
+            await _hubContext.SendToBranchAndSuperAdminAsync(currentBranch, "BranchUserStatusChanged", new
             {
                 userId = targetUser.Id,
                 status = targetUser.IsActive,
@@ -433,7 +434,7 @@ namespace Server.Controllers
             });
             await _context.SaveChangesAsync();
 
-            await _hubContext.Clients.All.SendAsync("BranchUserStatusChanged", new
+            await _hubContext.SendToBranchAndSuperAdminAsync(currentBranch, "BranchUserStatusChanged", new
             {
                 userId = targetUser.Id,
                 status = targetUser.IsActive,
@@ -571,6 +572,13 @@ namespace Server.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await _hubContext.SendToBranchAndSuperAdminAsync(currentBranch, "PasswordResetRequestUpdated", new
+            {
+                requestId = request.RequestId,
+                branch = request.Branch,
+                status = request.Status,
+                reviewedAt = request.ReviewedAt ?? DateTime.UtcNow
+            });
 
             if (!emailSent)
             {
@@ -629,6 +637,13 @@ namespace Server.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await _hubContext.SendToBranchAndSuperAdminAsync(currentBranch, "PasswordResetRequestUpdated", new
+            {
+                requestId = request.RequestId,
+                branch = request.Branch,
+                status = request.Status,
+                reviewedAt = request.ReviewedAt ?? DateTime.UtcNow
+            });
             return Ok(new { message = "Password reset request rejected." });
         }
 
@@ -693,6 +708,13 @@ namespace Server.Controllers
                 request.ReviewedByUserName = currentUserName;
                 request.ReviewRemarks = "User account no longer exists.";
                 await _context.SaveChangesAsync();
+                await _hubContext.SendToBranchAndSuperAdminAsync(request.Branch, "PasswordResetRequestUpdated", new
+                {
+                    requestId = request.RequestId,
+                    branch = request.Branch,
+                    status = request.Status,
+                    reviewedAt = request.ReviewedAt ?? DateTime.UtcNow
+                });
                 return BadRequest(new { message = "Target user account no longer exists." });
             }
 
@@ -757,6 +779,13 @@ namespace Server.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await _hubContext.SendToBranchAndSuperAdminAsync(request.Branch, "PasswordResetRequestUpdated", new
+            {
+                requestId = request.RequestId,
+                branch = request.Branch,
+                status = request.Status,
+                reviewedAt = request.ReviewedAt ?? DateTime.UtcNow
+            });
 
             if (!emailSent)
             {
@@ -812,6 +841,13 @@ namespace Server.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await _hubContext.SendToBranchAndSuperAdminAsync(request.Branch, "PasswordResetRequestUpdated", new
+            {
+                requestId = request.RequestId,
+                branch = request.Branch,
+                status = request.Status,
+                reviewedAt = request.ReviewedAt ?? DateTime.UtcNow
+            });
             return Ok(new { message = "Password reset request rejected." });
         }
 

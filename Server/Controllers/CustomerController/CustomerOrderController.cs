@@ -35,6 +35,9 @@ namespace Server.Controllers.CustomerController
             {
                 var normalizedSku = dto.SKU.Trim().ToUpperInvariant();
                 var normalizedProductName = dto.ProductName.Trim();
+                var normalizedBranch = string.IsNullOrWhiteSpace(dto.Branch)
+                    ? await ResolveDefaultBranchAsync()
+                    : dto.Branch.Trim();
                 var requestedSize = string.IsNullOrWhiteSpace(dto.Size)
                     ? string.Empty
                     : dto.Size.Trim().ToUpperInvariant();
@@ -42,7 +45,7 @@ namespace Server.Controllers.CustomerController
 
                 if (string.IsNullOrWhiteSpace(requestedSize))
                 {
-                    var resolvedSize = await ResolveSizeBySkuAsync(normalizedSku);
+                    var resolvedSize = await ResolveSizeBySkuAsync(normalizedSku, normalizedBranch);
                     if (string.IsNullOrWhiteSpace(resolvedSize))
                     {
                         return BadRequest(new ApiMessageDto
@@ -58,6 +61,7 @@ namespace Server.Controllers.CustomerController
                     .Where(item =>
                         item.SKU == normalizedSku &&
                         item.Size == normalizedSize &&
+                        item.Branch == normalizedBranch &&
                         item.WorkflowStatus != "Archived" &&
                         item.QuantityOnHand > 0)
                     .SumAsync(item => (int?)item.QuantityOnHand) ?? 0;
@@ -77,10 +81,6 @@ namespace Server.Controllers.CustomerController
                         Message = $"Cannot submit order. Requested quantity ({dto.Quantity}) exceeds available stock ({availableQuantity}) for SKU {normalizedSku} size {normalizedSize}."
                     });
                 }
-
-                var normalizedBranch = string.IsNullOrWhiteSpace(dto.Branch)
-                    ? await ResolveDefaultBranchAsync()
-                    : dto.Branch.Trim();
 
                 var order = new Order
                 {
@@ -109,7 +109,7 @@ namespace Server.Controllers.CustomerController
                 });
 
                 await _context.SaveChangesAsync();
-                await _notificationHub.Clients.All.SendAsync("OutboundQueueUpdated", new
+                await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "OutboundQueueUpdated", new
                 {
                     orderId = order.OrderId,
                     branch = order.Branch ?? "N/A",
@@ -149,7 +149,7 @@ namespace Server.Controllers.CustomerController
             return string.IsNullOrWhiteSpace(branch) ? "N/A" : branch.Trim();
         }
 
-        private async Task<string?> ResolveSizeBySkuAsync(string sku)
+        private async Task<string?> ResolveSizeBySkuAsync(string sku, string branch)
         {
             if (string.IsNullOrWhiteSpace(sku))
             {
@@ -159,6 +159,7 @@ namespace Server.Controllers.CustomerController
             var matched = await _context.Inventory
                 .Where(item =>
                     item.SKU == sku &&
+                    item.Branch == branch &&
                     item.WorkflowStatus != "Archived" &&
                     item.QuantityOnHand > 0)
                 .OrderByDescending(item => item.QuantityOnHand)

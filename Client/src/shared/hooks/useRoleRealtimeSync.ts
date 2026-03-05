@@ -44,8 +44,11 @@ export const useRoleRealtimeSync = (scope: RealtimeScope) => {
       ["branch-archived-employees"],
       ["branchmanager-bins"],
       ["branchmanager-archived-bins"],
+      ["receiver-bin-locations"],
       ["branch-manager-audit-logs"],
       ["branch-password-reset-requests"],
+      ["supplier-partners"],
+      ["supplier-replenishment-orders"],
       ["inbound-incoming-shipments"],
       ["inbound-activity-log"],
       ["inbound-kpis"],
@@ -61,6 +64,7 @@ export const useRoleRealtimeSync = (scope: RealtimeScope) => {
 
     const superAdminKeys: string[][] = [
       ["superadmin-managers"],
+      ["superadmin-archived-managers"],
       ["superadmin-suppliers"],
       ["superadmin-audit-logs"],
       ["super-admin-password-reset-requests"],
@@ -84,6 +88,7 @@ export const useRoleRealtimeSync = (scope: RealtimeScope) => {
       vas: [
         ["vas-pending-items"],
         ["vas-outbound-ready-items"],
+        ["vas-public-outbound-ready-items"],
         ["vas-activity-log"],
       ],
     };
@@ -101,9 +106,11 @@ export const useRoleRealtimeSync = (scope: RealtimeScope) => {
     branchNotificationConnection.on("VASQueueUpdated", refreshScope);
     branchNotificationConnection.on("LowStockAlert", refreshScope);
     branchNotificationConnection.on("BinLocationUpdated", refreshScope);
+    branchNotificationConnection.on("BranchNotificationUpdated", refreshScope);
 
     const branchAccountConnection = createHubConnection("branchAccount-managerHub", token);
     branchAccountConnection.on("PasswordResetRequested", refreshScope);
+    branchAccountConnection.on("PasswordResetRequestUpdated", refreshScope);
     branchAccountConnection.on("ReceiveNewBranchUser", refreshScope);
     branchAccountConnection.on("BranchUserStatusChanged", refreshScope);
 
@@ -159,7 +166,9 @@ export const useRoleRealtimeSync = (scope: RealtimeScope) => {
       branchNotificationConnection.off("VASQueueUpdated", refreshScope);
       branchNotificationConnection.off("LowStockAlert", refreshScope);
       branchNotificationConnection.off("BinLocationUpdated", refreshScope);
+      branchNotificationConnection.off("BranchNotificationUpdated", refreshScope);
       branchAccountConnection.off("PasswordResetRequested", refreshScope);
+      branchAccountConnection.off("PasswordResetRequestUpdated", refreshScope);
       branchAccountConnection.off("ReceiveNewBranchUser", refreshScope);
       branchAccountConnection.off("BranchUserStatusChanged", refreshScope);
 

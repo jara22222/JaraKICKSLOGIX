@@ -7,6 +7,7 @@ using Server.DTO;
 using Server.DTO.WorkflowDto;
 using Server.Hubs.BranchManagerHub;
 using Server.Models;
+using Server.Utilities;
 using System.Security.Claims;
 
 namespace Server.Controllers.BranchManagerController
@@ -31,8 +32,18 @@ namespace Server.Controllers.BranchManagerController
         [HttpGet("pending-supplier-shipments")]
         public async Task<ActionResult<List<InboundIncomingShipmentDto>>> GetPendingSupplierShipmentsAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<InboundIncomingShipmentDto>());
+            }
+
             var pending = await _context.Inventory
-                .Where(item => item.WorkflowStatus == "PendingAdminApproval")
+                .Where(item =>
+                    item.WorkflowStatus == "PendingAdminApproval" &&
+                    item.Branch == currentBranch)
                 .OrderByDescending(item => item.DateReceived)
                 .Select(item => new InboundIncomingShipmentDto
                 {
@@ -57,23 +68,37 @@ namespace Server.Controllers.BranchManagerController
         [HttpPut("approve-supplier-shipment/{productId}")]
         public async Task<ActionResult<ApiMessageDto>> ApproveSupplierShipmentAsync(string productId)
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Forbid();
+            }
+
             var product = await _context.Inventory.FirstOrDefaultAsync(item => item.ProductId == productId);
             if (product == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Supplier shipment not found." });
             }
 
+            if (!string.Equals(product.Branch?.Trim(), currentBranch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+
             if (product.WorkflowStatus != "PendingAdminApproval")
             {
                 return BadRequest(new ApiMessageDto { Message = "Shipment is not pending admin approval." });
             }
-
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
             var currentUserName = User.Identity?.Name ?? currentUser?.UserName ?? "BranchManager";
-            var branch = currentUser?.Branch ?? "N/A";
+            var branch = currentBranch;
 
             product.WorkflowStatus = "PendingReceive";
+            if (string.IsNullOrWhiteSpace(product.Branch))
+            {
+                product.Branch = branch;
+            }
             product.UpdatedAt = DateTime.UtcNow;
 
             _context.StockMovements.Add(new StockMovement
@@ -101,12 +126,12 @@ namespace Server.Controllers.BranchManagerController
             });
 
             await _context.SaveChangesAsync();
-            await _notificationHub.Clients.All.SendAsync("InboundShipmentApproved", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(branch, "InboundShipmentApproved", new
             {
                 productId = product.ProductId,
                 status = product.WorkflowStatus
             });
-            await _notificationHub.Clients.All.SendAsync("InboundQueueUpdated", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(branch, "InboundQueueUpdated", new
             {
                 productId = product.ProductId,
                 status = product.WorkflowStatus,

@@ -8,6 +8,7 @@ using Server.DTO;
 using Server.Models;
 using Server.Services;
 using Server.Data;  
+using Server.Utilities;
 using System.Security.Claims;
 
 namespace Server.Controllers
@@ -64,7 +65,7 @@ namespace Server.Controllers
                         Status = "InActive",
                         Message = "Branch manager archived."
                     };
-                    await _hubContext.Clients.All.SendAsync("ManagerArchived", managerHubEvent);
+                    await _hubContext.SendToSuperAdminAsync("ManagerArchived", managerHubEvent);
                     
                     var currentUserName = User.Identity?.Name ?? "Admin";
 
@@ -129,7 +130,7 @@ namespace Server.Controllers
                     Status = "Active",
                     Message = "Branch manager restored."
                 };
-                await _hubContext.Clients.All.SendAsync("ManagerRestored", managerHubEvent);
+                await _hubContext.SendToSuperAdminAsync("ManagerRestored", managerHubEvent);
 
                 var currentUserName = User.Identity?.Name ?? "Admin";
                 var auditLog = new AuditLog

@@ -50,6 +50,13 @@ namespace Server.Controllers.BranchManagerController
             };
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
+            await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "OutboundQueueUpdated", new
+            {
+                orderId = order.OrderId,
+                branch = order.Branch ?? "N/A",
+                status = order.Status,
+                updatedAt = order.CreatedAt
+            });
 
             dto.OrderId = order.OrderId;
             dto.Status = order.Status;
@@ -61,8 +68,16 @@ namespace Server.Controllers.BranchManagerController
         [HttpGet("pending-orders")]
         public async Task<ActionResult<List<DispatchOrderDto>>> GetPendingOrdersAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<DispatchOrderDto>());
+            }
+
             var orders = await _context.Orders
-                .Where(order => order.Status == "PendingApproval")
+                .Where(order => order.Status == "PendingApproval" && order.Branch == currentBranch)
                 .OrderByDescending(order => order.CreatedAt)
                 .Select(order => new DispatchOrderDto
                 {
@@ -177,26 +192,38 @@ namespace Server.Controllers.BranchManagerController
         [HttpPut("approve/{orderId}")]
         public async Task<ActionResult<ApiMessageDto>> ApproveOrderAsync(string orderId)
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Forbid();
+            }
+
             var order = await _context.Orders.FirstOrDefaultAsync(item => item.OrderId == orderId);
             if (order == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Order not found." });
             }
+            if (!string.Equals(order.Branch, currentBranch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
 
             order.Status = "Approved";
-            order.ApprovedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            order.ApprovedByUserId = currentUserId;
             order.ApprovedAt = DateTime.UtcNow;
             order.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            await _notificationHub.Clients.All.SendAsync("OutboundOrderApproved", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "OutboundOrderApproved", new
             {
                 orderId = order.OrderId,
                 branch = order.Branch ?? "N/A",
                 status = order.Status,
                 approvedAt = order.ApprovedAt ?? DateTime.UtcNow
             });
-            await _notificationHub.Clients.All.SendAsync("OutboundQueueUpdated", new
+            await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "OutboundQueueUpdated", new
             {
                 orderId = order.OrderId,
                 branch = order.Branch ?? "N/A",
@@ -211,15 +238,34 @@ namespace Server.Controllers.BranchManagerController
         [HttpPut("cancel/{orderId}")]
         public async Task<ActionResult<ApiMessageDto>> CancelOrderAsync(string orderId)
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Forbid();
+            }
+
             var order = await _context.Orders.FirstOrDefaultAsync(item => item.OrderId == orderId);
             if (order == null)
             {
                 return NotFound(new ApiMessageDto { Message = "Order not found." });
             }
+            if (!string.Equals(order.Branch, currentBranch, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
 
             order.Status = "Cancelled";
             order.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+            await _notificationHub.SendToBranchAndSuperAdminAsync(order.Branch, "OutboundQueueUpdated", new
+            {
+                orderId = order.OrderId,
+                branch = order.Branch ?? "N/A",
+                status = order.Status,
+                updatedAt = order.UpdatedAt ?? DateTime.UtcNow
+            });
             return Ok(new ApiMessageDto { Message = "Order cancelled." });
         }
     }

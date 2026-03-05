@@ -47,7 +47,7 @@ namespace Server.Data
             builder.Entity<BinLocation>()
                 .HasQueryFilter(bin => !ShouldApplyBranchFilter() || bin.Branch == GetCurrentBranch());
             builder.Entity<Inventory>()
-                .HasQueryFilter(item => !ShouldApplyBranchFilter() || item.User.Branch == GetCurrentBranch());
+                .HasQueryFilter(item => !ShouldApplyBranchFilter() || item.Branch == GetCurrentBranch());
 
             // Step 2: Configure the One-to-Many Relationship
             builder.Entity<Inventory>()
@@ -114,6 +114,8 @@ namespace Server.Data
                 .HasIndex(bin => new { bin.Branch, bin.BinStatus, bin.CreatedAt });
             builder.Entity<Inventory>()
                 .HasIndex(item => item.BinId);
+            builder.Entity<Inventory>()
+                .HasIndex(item => item.Branch);
             builder.Entity<Order>()
                 .HasIndex(order => order.ApprovedByUserId);
         }

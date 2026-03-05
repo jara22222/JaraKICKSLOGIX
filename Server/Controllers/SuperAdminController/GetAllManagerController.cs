@@ -8,6 +8,7 @@ using Server.DTO;
 using Server.Models;
 using Server.Services;
 using Server.Data;  
+using Server.Utilities;
 using System.Security.Claims;
 namespace Server.Controllers
 {
@@ -61,7 +62,7 @@ namespace Server.Controllers
             ).ToListAsync();
 
          
-                await _hubContext.Clients.All.SendAsync("Retrived All Managers",managers);
+                await _hubContext.SendToSuperAdminAsync("Retrived All Managers", managers);
             
             
             return Ok(managers);

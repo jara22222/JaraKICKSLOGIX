@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.DTO;
+using Server.Hubs.BranchManagerHub;
+using Server.Utilities;
 using System.Security.Claims;
 
 namespace Server.Controllers.BranchManagerController
@@ -12,10 +15,14 @@ namespace Server.Controllers.BranchManagerController
     public class BranchNotificationController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHubContext<BranchNotificationHub> _notificationHub;
 
-        public BranchNotificationController(ApplicationDbContext context)
+        public BranchNotificationController(
+            ApplicationDbContext context,
+            IHubContext<BranchNotificationHub> notificationHub)
         {
             _context = context;
+            _notificationHub = notificationHub;
         }
 
         [Authorize(Roles = "BranchManager")]
@@ -55,6 +62,13 @@ namespace Server.Controllers.BranchManagerController
             notification.IsRead = true;
             notification.ReadAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+            await _notificationHub.SendToBranchAndSuperAdminAsync(notification.Branch, "BranchNotificationUpdated", new
+            {
+                notificationId = notification.NotificationId,
+                branch = notification.Branch,
+                isRead = true,
+                updatedAt = notification.ReadAt ?? DateTime.UtcNow
+            });
             return Ok(new ApiMessageDto { Message = "Notification marked as read." });
         }
     }
