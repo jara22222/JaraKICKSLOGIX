@@ -140,10 +140,20 @@ namespace Server.Controllers
   </p>
 </div>";
 
-                    await _emailSenderService.SendAsync(
-                        newManagerUser.Email ?? string.Empty,
-                        "KicksLogix Account Created - Reset Password Now",
-                        onboardingBody);
+                    var onboardingEmailSent = true;
+                    string? onboardingEmailWarning = null;
+                    try
+                    {
+                        onboardingEmailSent = await _emailSenderService.SendAsync(
+                            newManagerUser.Email ?? string.Empty,
+                            "KicksLogix Account Created - Reset Password Now",
+                            onboardingBody);
+                    }
+                    catch (InvalidOperationException emailEx)
+                    {
+                        onboardingEmailSent = false;
+                        onboardingEmailWarning = emailEx.Message;
+                    }
 
                     
 
@@ -165,7 +175,11 @@ namespace Server.Controllers
 
 
                     return Ok(new {
-                        message= "Branch user created and role assigned successfully!"
+                        message = onboardingEmailSent
+                            ? "Branch user created and role assigned successfully!"
+                            : "Branch user created and role assigned, but onboarding email was not sent.",
+                        emailSent = onboardingEmailSent,
+                        emailWarning = onboardingEmailWarning
                     });
                 }
                 return BadRequest(result.Errors);
