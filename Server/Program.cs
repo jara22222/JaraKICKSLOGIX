@@ -221,7 +221,8 @@ else
 
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+var enableScalar = app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("OpenApi:EnableScalar");
+if (enableScalar)
 {
     app.MapOpenApi();
     app.MapScalarApiReference(); // The beautiful new UI!
@@ -229,27 +230,35 @@ if (app.Environment.IsDevelopment())
 
 using (var scope = app.Services.CreateScope())
 {
-    try
+    var skipStartupMigrations = builder.Configuration.GetValue<bool>("Database:SkipStartupMigrations");
+    if (!skipStartupMigrations)
     {
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await dbContext.Database.MigrateAsync();
-        await dbContext.Database.ExecuteSqlRawAsync(
-            """
-            IF OBJECT_ID(N'[dbo].[DataProtectionKeys]', N'U') IS NULL
-            BEGIN
-                CREATE TABLE [dbo].[DataProtectionKeys](
-                    [Id] INT IDENTITY(1,1) NOT NULL CONSTRAINT [PK_DataProtectionKeys] PRIMARY KEY,
-                    [FriendlyName] NVARCHAR(MAX) NULL,
-                    [Xml] NVARCHAR(MAX) NULL
-                );
-            END
-            """);
-        await DbSeeder.SeedAsync(scope.ServiceProvider);
+        try
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            await dbContext.Database.MigrateAsync();
+            await dbContext.Database.ExecuteSqlRawAsync(
+                """
+                IF OBJECT_ID(N'[dbo].[DataProtectionKeys]', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE [dbo].[DataProtectionKeys](
+                        [Id] INT IDENTITY(1,1) NOT NULL CONSTRAINT [PK_DataProtectionKeys] PRIMARY KEY,
+                        [FriendlyName] NVARCHAR(MAX) NULL,
+                        [Xml] NVARCHAR(MAX) NULL
+                    );
+                END
+                """);
+            await DbSeeder.SeedAsync(scope.ServiceProvider);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Seeder error: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+        }
     }
-    catch (Exception ex)
+    else
     {
-        Console.WriteLine($"Seeder error: {ex.Message}");
-        Console.WriteLine(ex.StackTrace);
+        app.Logger.LogInformation("Startup DB migration/seed skipped by config (Database:SkipStartupMigrations=true).");
     }
 }
 app.UseRouting();
