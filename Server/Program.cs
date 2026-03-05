@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -12,6 +13,24 @@ using Scalar.AspNetCore;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
+static string NormalizeConnectionStringValue(string? rawValue)
+{
+    if (string.IsNullOrWhiteSpace(rawValue))
+    {
+        return string.Empty;
+    }
+
+    var trimmed = rawValue.Trim();
+    const string prefixedKey = "ConnectionStrings__DefaultConnection=";
+
+    if (trimmed.StartsWith(prefixedKey, StringComparison.OrdinalIgnoreCase))
+    {
+        return trimmed[prefixedKey.Length..].Trim();
+    }
+
+    return trimmed;
+}
 //Add cors services
 builder.Services.AddCors(options =>
 {
@@ -83,7 +102,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpContextAccessor();
 
-var envDefaultConnection = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+var envDefaultConnection = NormalizeConnectionStringValue(
+    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"));
 var appSettingsFallbackConnection = new ConfigurationBuilder()
     .SetBasePath(builder.Environment.ContentRootPath)
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
@@ -91,7 +111,7 @@ var appSettingsFallbackConnection = new ConfigurationBuilder()
     .GetConnectionString("DefaultConnection");
 
 var resolvedDefaultConnection = !string.IsNullOrWhiteSpace(envDefaultConnection)
-    ? envDefaultConnection.Trim()
+    ? envDefaultConnection
     : builder.Configuration.GetConnectionString("DefaultConnection");
 
 if (string.IsNullOrWhiteSpace(resolvedDefaultConnection))
@@ -146,6 +166,10 @@ builder.Services.AddAuthentication(options => {
 
 
 builder.Services.AddAuthorization();
+builder.Services
+    .AddDataProtection()
+    .SetApplicationName("KicksLogix")
+    .PersistKeysToDbContext<ApplicationDbContext>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddControllers();
@@ -184,6 +208,19 @@ using (var scope = app.Services.CreateScope())
 {
     try
     {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await dbContext.Database.MigrateAsync();
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID(N'[dbo].[DataProtectionKeys]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[DataProtectionKeys](
+                    [Id] INT IDENTITY(1,1) NOT NULL CONSTRAINT [PK_DataProtectionKeys] PRIMARY KEY,
+                    [FriendlyName] NVARCHAR(MAX) NULL,
+                    [Xml] NVARCHAR(MAX) NULL
+                );
+            END
+            """);
         await DbSeeder.SeedAsync(scope.ServiceProvider);
     }
     catch (Exception ex)
