@@ -13,9 +13,10 @@ const comparisonChartConfig = {
 } satisfies ChartConfig;
 
 const comparisonData = [
-  { zone: "Inbound Zone A", receipts: 12, orders: 9, lowStockAlerts: 2 },
-  { zone: "Inbound Zone B", receipts: 9, orders: 7, lowStockAlerts: 1 },
-  { zone: "Dispatch Zone", receipts: 5, orders: 13, lowStockAlerts: 3 },
+  { zone: "Receiver", receipts: 12, orders: 9, lowStockAlerts: 2 },
+  { zone: "Put-away", receipts: 9, orders: 7, lowStockAlerts: 1 },
+  { zone: "Dispatch Clerk", receipts: 5, orders: 13, lowStockAlerts: 3 },
+  { zone: "VAS Personnel", receipts: 8, orders: 6, lowStockAlerts: 2 },
 ];
 
 const zoneTotals = comparisonData.map((zone) => ({
@@ -23,17 +24,17 @@ const zoneTotals = comparisonData.map((zone) => ({
   total: zone.receipts + zone.orders + zone.lowStockAlerts,
 }));
 
-const zoneColors = ["#10B981", "#3B82F6", "#EF4444"];
+const zoneColors = ["#10B981", "#3B82F6", "#EF4444", "#8B5CF6"];
 
 export default function DonutChartComponent() {
   return (
     <>
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
         <h3 className="text-sm font-bold text-[#001F3F] uppercase tracking-wide mb-1">
-          Zone Comparison
+          Role Comparison
         </h3>
         <p className="text-xs text-slate-500 mb-4">
-          Distribution by total activity per zone
+          Distribution by total activity per role
         </p>
         <ChartContainer config={comparisonChartConfig} className="h-[260px] w-full">
           <PieChart>

@@ -122,6 +122,11 @@ export default function MobileSidebar() {
             link={"accessmanagement"}
           />
           <NavItem
+            icon={<Archive className="size-5" />}
+            label="Archived Users"
+            link={"archivedusers"}
+          />
+          <NavItem
             icon={<Boxes className="size-5" />}
             label="Supply Management"
             link={"suppliermanagement"}
