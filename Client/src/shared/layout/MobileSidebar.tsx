@@ -74,7 +74,7 @@ export default function MobileSidebar() {
         onClick={() => setIsMobileOpen(!isMobileOpen)}
         className={`fixed top-4 lg:hidden z-[60] p-2 bg-[#001F3F] text-white rounded-lg shadow-lg hover:bg-[#00162e] flex flex-col
     transition-all duration-300 ease-in-out 
-    ${isMobileOpen ? "left-[264px]" : "left-4"}`}
+    left-4`}
       >
         {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
       </button>

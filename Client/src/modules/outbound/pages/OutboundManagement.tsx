@@ -129,8 +129,82 @@ export default function OutboundManagement() {
               Review supplier-submitted orders before they appear in Dispatch Clerk queue.
             </p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="p-3 space-y-3 md:hidden">
+            {isLoading ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Loading pending orders...
+              </div>
+            ) : pendingOrders.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                No supplier orders pending approval.
+              </div>
+            ) : (
+              pendingOrders.map((order) => (
+                <article
+                  key={`${order.orderId}-mobile`}
+                  className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-bold text-[#001F3F]">{order.orderId}</p>
+                      <p className="text-xs text-slate-500">{order.customerName}</p>
+                    </div>
+                    <span className="text-[11px] font-bold uppercase px-2 py-1 rounded-full bg-slate-100 text-slate-700">
+                      {formatInboundStatus(order.status)}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
+                      <p className="text-slate-400">SKU / Size</p>
+                      <p className="font-bold text-[#001F3F]">
+                        {order.sku} / {order.size}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
+                      <p className="text-slate-400">Qty</p>
+                      <p className="font-bold text-[#001F3F]">{order.quantity}</p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500 break-words">
+                    Courier: {order.courierId}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 break-words">
+                    Address: {order.customerAddress}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() =>
+                        setActionTarget({
+                          orderId: order.orderId,
+                          customerName: order.customerName,
+                          mode: "approve",
+                        })
+                      }
+                      disabled={approveMutation.isPending || cancelMutation.isPending}
+                      className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-60"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() =>
+                        setActionTarget({
+                          orderId: order.orderId,
+                          customerName: order.customerName,
+                          mode: "cancel",
+                        })
+                      }
+                      disabled={approveMutation.isPending || cancelMutation.isPending}
+                      className="px-3 py-2 rounded-lg bg-rose-600 text-white text-xs font-bold disabled:opacity-60"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full min-w-[920px] text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-100">
                   <HeaderCell label="Order / Customer" />
@@ -170,7 +244,7 @@ export default function OutboundManagement() {
                         {order.quantity}
                       </td>
                       <td className="p-3 text-sm text-slate-700">{order.courierId}</td>
-                      <td className="p-3 text-xs text-slate-600 max-w-[220px] truncate">
+                      <td className="p-3 text-xs text-slate-600 max-w-[260px] whitespace-normal break-words">
                         {order.customerAddress}
                       </td>
                       <td className="p-3">

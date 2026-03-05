@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
+using System.Security.Claims;
 
 namespace Server.Controllers
 {
@@ -375,6 +376,13 @@ namespace Server.Controllers
                 return BadRequest(result.Errors);
             }
 
+            user.UpdatedAt = DateTime.UtcNow;
+            var userUpdateResult = await _userManager.UpdateAsync(user);
+            if (!userUpdateResult.Succeeded)
+            {
+                return BadRequest(userUpdateResult.Errors);
+            }
+
             var latestApprovedRequest = await _context.BranchPasswordResetRequests
                 .Where(request => request.UserId == user.Id && request.Status == "Approved")
                 .OrderByDescending(request => request.ReviewedAt ?? request.RequestedAt)
@@ -388,6 +396,55 @@ namespace Server.Controllers
             }
 
             return Ok(new { message = "Your password has been reset successfully." });
+        }
+
+        [Authorize]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfileAsync([FromBody] UpdateProfileDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized(new { message = "User identity is missing." });
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound(new { message = "User account not found." });
+            }
+
+            user.FirstName = dto.FirstName.Trim();
+            user.LastName = dto.LastName.Trim();
+            user.Email = dto.Email.Trim();
+            user.UpdatedAt = DateTime.UtcNow;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(new
+            {
+                message = "Profile updated successfully.",
+                user = new
+                {
+                    id = user.Id,
+                    userName = user.UserName,
+                    email = user.Email,
+                    firstName = user.FirstName,
+                    lastName = user.LastName,
+                    branch = user.Branch,
+                    roles
+                }
+            });
         }
 
     }

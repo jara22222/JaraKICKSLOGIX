@@ -1,4 +1,5 @@
 import SuperAdminHeader from "@/modules/super-admin/components/SuperAdminHeader";
+import apiClient from "@/services/apiClient";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
@@ -60,7 +61,7 @@ export default function AccountSettings() {
     [firstName, lastName],
   );
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     const userJson = localStorage.getItem("user");
     if (!userJson) {
       showErrorToast("No active user profile found.");
@@ -69,15 +70,18 @@ export default function AccountSettings() {
 
     try {
       const user = JSON.parse(userJson);
-      const updatedUser = {
-        ...user,
+      const { data } = await apiClient.put("/api/Auth/profile", {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
+      });
+      const updatedUser = {
+        ...user,
+        ...(data?.user ?? {}),
       };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       window.dispatchEvent(new Event("auth-user-updated"));
-      showSuccessToast("Profile updated successfully.");
+      showSuccessToast(data?.message || "Profile updated successfully.");
     } catch {
       showErrorToast("Failed to save profile.");
     }

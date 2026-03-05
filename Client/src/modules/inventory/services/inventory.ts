@@ -5,6 +5,7 @@ export type InventoryItem = {
   binLocation: string;
   binStatus: string;
   sku: string;
+  supplierName: string;
   itemBatchName: string;
   batchQty: number;
   totalProductQty: number;
@@ -52,6 +53,7 @@ export const getInventoryItems = async (): Promise<InventoryItem[]> => {
       binLocation: item?.binLocation ?? "Unassigned",
       binStatus: item?.binStatus ?? "Unknown",
       sku: item?.sku ?? "-",
+      supplierName: item?.supplierName ?? "Unknown Supplier",
       itemBatchName: item?.itemBatchName ?? item?.productName ?? "Unknown Batch",
       batchQty,
       totalProductQty,
