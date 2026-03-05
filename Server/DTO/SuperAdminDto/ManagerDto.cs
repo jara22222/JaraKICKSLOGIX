@@ -9,6 +9,7 @@ namespace Server.DTO
     {
         [Required]
         public string FirstName { get; set; } = string.Empty;
+        [StringLength(50)]
         public string? MiddleName { get; set; } = string.Empty;
         [Required]
         [StringLength(50)]

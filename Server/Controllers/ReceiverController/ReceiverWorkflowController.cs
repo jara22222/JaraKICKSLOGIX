@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 using Server.Data;
 using Server.DTO;
 using Server.DTO.WorkflowDto;
+using Server.Hubs.BranchManagerHub;
 using Server.Models;
+using Server.Utilities;
 using System.Security.Claims;
 
 namespace Server.Controllers.ReceiverController
@@ -14,11 +17,16 @@ namespace Server.Controllers.ReceiverController
     public class ReceiverWorkflowController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHubContext<BranchNotificationHub> _notificationHub;
         private const int BranchAdminNotifyThreshold = 20;
 
-        public ReceiverWorkflowController(ApplicationDbContext context)
+        public ReceiverWorkflowController(
+            ApplicationDbContext context,
+            IHubContext<BranchNotificationHub> notificationHub
+        )
         {
             _context = context;
+            _notificationHub = notificationHub;
         }
 
         [Authorize(Roles = "Receiver")]
@@ -34,7 +42,11 @@ namespace Server.Controllers.ReceiverController
                 var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
                 var branchName = currentUser?.Branch ?? "N/A";
                 var normalizedSize = dto.Size.Trim().ToUpperInvariant();
+                var normalizedSku = dto.SKU.Trim().ToUpperInvariant();
+                var normalizedProductName = dto.ProductName.Trim();
+                var requiredUnits = dto.Quantity;
                 var selectedBinId = dto.SelectedBinId?.Trim();
+                var shipmentId = dto.ShipmentId?.Trim();
 
                 BinLocation? selectedBin = null;
 
@@ -53,6 +65,15 @@ namespace Server.Controllers.ReceiverController
                             Message = "Selected bin is invalid for this item size."
                         });
                     }
+
+                    var selectedBinRemaining = selectedBin.BinCapacity - selectedBin.OccupiedQty;
+                    if (selectedBinRemaining < requiredUnits)
+                    {
+                        return BadRequest(new ApiMessageDto
+                        {
+                            Message = $"Selected bin does not have enough capacity. Required units: {requiredUnits}, Remaining units: {Math.Max(selectedBinRemaining, 0)}."
+                        });
+                    }
                 }
                 else
                 {
@@ -60,7 +81,14 @@ namespace Server.Controllers.ReceiverController
                         .Where(bin =>
                             bin.BinStatus != "Archived" &&
                             bin.BinSize == normalizedSize &&
-                            (bin.BinCapacity - bin.OccupiedQty) >= dto.Quantity
+                            !_context.Inventory.Any(item =>
+                                item.BinId == bin.BinId &&
+                                item.IsBinAssigned &&
+                                item.WorkflowStatus != "Archived" &&
+                                (item.SKU != normalizedSku ||
+                                 item.Size != normalizedSize ||
+                                 (item.ProductName ?? string.Empty).ToUpper() != normalizedProductName.ToUpper())) &&
+                            (bin.BinCapacity - bin.OccupiedQty) >= requiredUnits
                         )
                         .OrderBy(bin => (bin.BinCapacity - bin.OccupiedQty))
                         .FirstOrDefaultAsync();
@@ -73,6 +101,13 @@ namespace Server.Controllers.ReceiverController
                         .Where(bin =>
                             bin.BinStatus != "Archived" &&
                             bin.BinSize == normalizedSize &&
+                            !_context.Inventory.Any(item =>
+                                item.BinId == bin.BinId &&
+                                item.IsBinAssigned &&
+                                item.WorkflowStatus != "Archived" &&
+                                (item.SKU != normalizedSku ||
+                                 item.Size != normalizedSize ||
+                                 (item.ProductName ?? string.Empty).ToUpper() != normalizedProductName.ToUpper())) &&
                             (bin.BinCapacity - bin.OccupiedQty) > 0
                         )
                         .OrderByDescending(bin => (bin.BinCapacity - bin.OccupiedQty))
@@ -89,34 +124,92 @@ namespace Server.Controllers.ReceiverController
                     selectedBin = fallbackBin;
                 }
 
-                var newProduct = new Inventory
+                var hasConflictingProductInSelectedBin = await _context.Inventory.AnyAsync(item =>
+                    item.BinId == selectedBin.BinId &&
+                    item.IsBinAssigned &&
+                    item.WorkflowStatus != "Archived" &&
+                    item.ProductId != shipmentId &&
+                    (item.SKU != normalizedSku ||
+                     item.Size != normalizedSize ||
+                     (item.ProductName ?? string.Empty).ToUpper() != normalizedProductName.ToUpper()));
+                if (hasConflictingProductInSelectedBin)
                 {
-                    ProductId = Guid.NewGuid().ToString(),
+                    return BadRequest(new ApiMessageDto
+                    {
+                        Message = "Selected bin already contains a different SKU, product name, or size. Please choose another bin."
+                    });
+                }
+
+                var existingShipment = string.IsNullOrWhiteSpace(shipmentId)
+                    ? null
+                    : await _context.Inventory.FirstOrDefaultAsync(item =>
+                        item.ProductId == shipmentId &&
+                        item.WorkflowStatus == "PendingReceive"
+                    );
+
+                var mergeTarget = await _context.Inventory
+                    .Where(item =>
+                        item.ProductId != shipmentId &&
+                        item.IsBinAssigned &&
+                        item.BinId == selectedBin.BinId &&
+                        item.SKU == normalizedSku &&
+                        item.Size == normalizedSize &&
+                        (item.ProductName ?? string.Empty).ToUpper() == normalizedProductName.ToUpper() &&
+                        item.WorkflowStatus != "Archived")
+                    .OrderByDescending(item => item.UpdatedAt ?? item.DateReceived)
+                    .FirstOrDefaultAsync();
+
+                var product = existingShipment ?? new Inventory
+                {
+                    ProductId = IdGenerator.Create("PRD"),
                     SupplierId = currentUserId ?? string.Empty,
-                    SupplierName = dto.Supplier.Trim(),
-                    ProductName = dto.ProductName.Trim(),
-                    ItemQty = dto.Quantity.ToString(),
-                    QuantityOnHand = dto.Quantity,
-                    SKU = dto.SKU.Trim(),
-                    Size = normalizedSize,
-                    QrString = $"PRODUCT:{dto.SKU.Trim()}:{Guid.NewGuid()}",
-                    CriticalThreshold = GetThresholdBySize(normalizedSize),
-                    WorkflowStatus = "PendingPutAway",
-                    BinId = selectedBin.BinId,
-                    IsBinAssigned = true,
-                    DateReceived = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    DateReceived = DateTime.UtcNow
                 };
 
-                selectedBin.OccupiedQty += dto.Quantity;
+                if (mergeTarget != null)
+                {
+                    mergeTarget.QuantityOnHand += dto.Quantity;
+                    mergeTarget.ItemQty = mergeTarget.QuantityOnHand.ToString();
+                    mergeTarget.UpdatedAt = DateTime.UtcNow;
+
+                    if (existingShipment != null)
+                    {
+                        // Remove pending shipment row once merged into an existing batch record.
+                        _context.Inventory.Remove(existingShipment);
+                    }
+
+                    product = mergeTarget;
+                }
+                else
+                {
+                    product.SupplierName = dto.Supplier.Trim();
+                    product.ProductName = normalizedProductName;
+                    product.ItemQty = dto.Quantity.ToString();
+                    product.QuantityOnHand = dto.Quantity;
+                    product.SKU = normalizedSku;
+                    product.Size = normalizedSize;
+                }
+                product.QrString = string.IsNullOrWhiteSpace(product.QrString)
+                    ? $"PRODUCT:{normalizedSku}:{IdGenerator.RandomBase36(10)}"
+                    : product.QrString;
+                product.CriticalThreshold = GetThresholdBySize(normalizedSize);
+                product.WorkflowStatus = "PendingPutAway";
+                product.BinId = selectedBin.BinId;
+                product.IsBinAssigned = true;
+                product.UpdatedAt = DateTime.UtcNow;
+
+                selectedBin.OccupiedQty += requiredUnits;
                 selectedBin.IsAvailable = selectedBin.OccupiedQty < selectedBin.BinCapacity;
-                selectedBin.BinStatus = selectedBin.IsAvailable ? "Available" : "Occupied";
+                selectedBin.BinStatus = selectedBin.OccupiedQty > 0 ? "Occupied" : "Available";
                 selectedBin.UpdatedAt = DateTime.UtcNow;
 
-                _context.Inventory.Add(newProduct);
+                if (existingShipment == null && mergeTarget == null)
+                {
+                    _context.Inventory.Add(product);
+                }
                 _context.StockMovements.Add(new StockMovement
                 {
-                    ProductId = newProduct.ProductId,
+                    ProductId = product.ProductId,
                     BinId = selectedBin.BinId,
                     Branch = branchName,
                     Action = "Receive",
@@ -125,7 +218,7 @@ namespace Server.Controllers.ReceiverController
                     PerformedByUserId = currentUserId ?? "N/A",
                     PerformedBy = currentUserName,
                     Description =
-                        $"{currentUserName} received {dto.Quantity} units of {dto.SKU} and assigned bin {selectedBin.BinLocationCode}.",
+                        $"{currentUserName} received {dto.Quantity} units of {normalizedSku} and assigned bin {selectedBin.BinLocationCode}.",
                     OccurredAt = DateTime.UtcNow
                 });
 
@@ -136,7 +229,7 @@ namespace Server.Controllers.ReceiverController
                     Branch = branchName,
                     PerformedBy = currentUserName,
                     Description =
-                        $"{currentUserName} registered received product {dto.SKU} ({dto.Quantity}) to bin {selectedBin.BinLocationCode}.",
+                        $"{currentUserName} registered received product {normalizedSku} ({dto.Quantity}) to bin {selectedBin.BinLocationCode}.",
                     DatePerformed = DateTime.UtcNow
                 });
 
@@ -145,7 +238,7 @@ namespace Server.Controllers.ReceiverController
                     await CreateHighQuantityNotificationAsync(
                         branchName,
                         normalizedSize,
-                        dto.SKU,
+                        normalizedSku,
                         dto.Quantity,
                         selectedBin.BinLocationCode
                     );
@@ -153,18 +246,33 @@ namespace Server.Controllers.ReceiverController
 
                 await _context.SaveChangesAsync();
 
+                await _notificationHub.Clients.All.SendAsync("PutAwayTaskUpdated", new
+                {
+                    productId = product.ProductId,
+                    sku = normalizedSku,
+                    size = normalizedSize,
+                    quantity = dto.Quantity,
+                    branch = branchName,
+                    binId = selectedBin.BinId,
+                    binLocation = selectedBin.BinLocationCode,
+                    fromStatus = existingShipment?.WorkflowStatus ?? "PendingReceive",
+                    toStatus = "PendingPutAway",
+                    performedBy = currentUserName,
+                    updatedAt = DateTime.UtcNow
+                });
+
                 return Ok(new ReceiverProductDto
                 {
-                    ProductId = newProduct.ProductId,
+                    ProductId = product.ProductId,
                     ProductName = dto.ProductName,
                     Supplier = dto.Supplier,
-                    SKU = dto.SKU,
+                    SKU = normalizedSku,
                     Size = normalizedSize,
                     Quantity = dto.Quantity,
-                    WorkflowStatus = newProduct.WorkflowStatus,
+                    WorkflowStatus = product.WorkflowStatus,
                     BinId = selectedBin.BinId,
                     BinLocation = selectedBin.BinLocationCode,
-                    ReceivedAt = newProduct.DateReceived
+                    ReceivedAt = product.DateReceived
                 });
             }
             catch (Exception ex)
@@ -333,10 +441,129 @@ namespace Server.Controllers.ReceiverController
         }
 
         [Authorize(Roles = "Receiver,PutAway")]
+        [HttpGet("kpis")]
+        public async Task<ActionResult<InboundKpiDto>> GetInboundKpisAsync()
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentUserId))
+            {
+                return Unauthorized(new ApiMessageDto
+                {
+                    Message = "User identity is missing."
+                });
+            }
+
+            var now = DateTime.UtcNow;
+            var todayUtc = now.Date;
+            var tomorrowUtc = todayUtc.AddDays(1);
+
+            var pendingStatuses = new[] { "PendingReceive", "PendingAdminApproval" };
+            var inTransitStatuses = new[] { "InTransit", "In Transit" };
+
+            var pendingAcceptanceCount = await _context.Inventory
+                .Where(item => pendingStatuses.Contains(item.WorkflowStatus))
+                .CountAsync();
+
+            var totalUnitsIncoming = await _context.Inventory
+                .Where(item => pendingStatuses.Contains(item.WorkflowStatus))
+                .SumAsync(item => (int?)item.QuantityOnHand) ?? 0;
+
+            var inTransitCount = await _context.Inventory
+                .Where(item => inTransitStatuses.Contains(item.WorkflowStatus))
+                .CountAsync();
+
+            var storedTodayCount = await _context.StockMovements
+                .Where(movement =>
+                    movement.Action == "StoreInBin" &&
+                    movement.OccurredAt >= todayUtc &&
+                    movement.OccurredAt < tomorrowUtc)
+                .CountAsync();
+
+            var actionsTodayCount = await _context.StockMovements
+                .Where(movement =>
+                    movement.PerformedByUserId == currentUserId &&
+                    movement.OccurredAt >= todayUtc &&
+                    movement.OccurredAt < tomorrowUtc)
+                .CountAsync();
+
+            return Ok(new InboundKpiDto
+            {
+                PendingAcceptanceCount = pendingAcceptanceCount,
+                InTransitCount = inTransitCount,
+                StoredTodayCount = storedTodayCount,
+                ActionsTodayCount = actionsTodayCount,
+                TotalUnitsIncoming = totalUnitsIncoming
+            });
+        }
+
+        [Authorize(Roles = "Receiver,PutAway")]
         [HttpGet("activity-log")]
         public async Task<ActionResult<List<InboundActivityDto>>> GetActivityLogAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentUserId))
+            {
+                return Unauthorized(new ApiMessageDto
+                {
+                    Message = "User identity is missing."
+                });
+            }
+
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            if (currentUser == null)
+            {
+                return Unauthorized(new ApiMessageDto
+                {
+                    Message = "User account not found."
+                });
+            }
+
+            var roleNames = await _context.UserRoles
+                .Join(_context.Roles, userRole => userRole.RoleId, role => role.Id, (userRole, role) => new { userRole.UserId, role.Name })
+                .Where(item => item.UserId == currentUserId)
+                .Select(item => item.Name)
+                .ToListAsync();
+
+            var isPutAway = roleNames.Contains("PutAway");
+            var isReceiver = roleNames.Contains("Receiver");
+            if (!isPutAway && !isReceiver)
+            {
+                return Forbid();
+            }
+
+            var targetRoleName = isPutAway ? "PutAway" : "Receiver";
+            var allowedActions = isPutAway
+                ? new[] { "ClaimPutAway", "ScanItem", "ScanBin", "StoreInBin" }
+                : new[] { "Receive" };
+
+            var targetRoleId = await _context.Roles
+                .Where(role => role.Name == targetRoleName)
+                .Select(role => role.Id)
+                .FirstOrDefaultAsync();
+
+            if (string.IsNullOrWhiteSpace(targetRoleId))
+            {
+                return Ok(new List<InboundActivityDto>());
+            }
+
+            var scopedUserIds = await _context.UserRoles
+                .Where(userRole => userRole.RoleId == targetRoleId)
+                .Select(userRole => userRole.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            if (scopedUserIds.Count == 0)
+            {
+                return Ok(new List<InboundActivityDto>());
+            }
+
+            var currentBranch = currentUser.Branch ?? string.Empty;
             var activity = await _context.StockMovements
+                .Where(movement =>
+                    !string.IsNullOrWhiteSpace(movement.PerformedByUserId) &&
+                    scopedUserIds.Contains(movement.PerformedByUserId) &&
+                    allowedActions.Contains(movement.Action) &&
+                    (string.IsNullOrWhiteSpace(currentBranch) || movement.Branch == currentBranch))
                 .OrderByDescending(movement => movement.OccurredAt)
                 .Take(500)
                 .Select(movement => new InboundActivityDto
@@ -385,7 +612,7 @@ namespace Server.Controllers.ReceiverController
 
                 _context.BranchNotifications.Add(new BranchNotification
                 {
-                    NotificationId = Guid.NewGuid().ToString(),
+                    NotificationId = IdGenerator.Create("NTF"),
                     Branch = branch,
                     RecipientUserId = manager.Id,
                     Type = "HighQuantityReceive",

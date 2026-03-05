@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.DTO;
 using Server.Models;
+using Server.Utilities;
 using System.Security.Claims;
 
 namespace Server.Controllers
@@ -13,15 +14,26 @@ namespace Server.Controllers
     public class BinLocationController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private static readonly IReadOnlyDictionary<string, int> FixedCapacityBySize =
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["S"] = 20,
+                ["M"] = 40,
+                ["L"] = 60,
+                ["XL"] = 80,
+                ["XXL"] = 100
+            };
 
         public BinLocationController(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        private static string BuildQrCodeString(string binId)
+        private static string BuildQrCodeString(string binId, string binLocation)
         {
-            return $"http://localhost:5173/binlocation/product/{binId}";
+            var normalizedLocation = (binLocation ?? string.Empty).Trim().ToUpperInvariant();
+            // Non-URL payload so scanners treat this as bin data, not a web link.
+            return $"BIN:{binId}|LOC:{normalizedLocation}";
         }
 
         [Authorize(Roles = "BranchManager,SuperAdmin,Receiver")]
@@ -33,21 +45,55 @@ namespace Server.Controllers
                 var bins = await _context.BinLocations
                     .Where(bin => bin.BinStatus != "Archived")
                     .OrderByDescending(bin => bin.CreatedAt)
-                    .Select(bin => new BinLocationListItemDto
-                    {
-                        BinId = bin.BinId,
-                        BinLocation = bin.BinLocationCode,
-                        BinStatus = bin.BinStatus,
-                        BinSize = bin.BinSize,
-                        BinCapacity = bin.BinCapacity,
-                        OccupiedQty = bin.OccupiedQty,
-                        QrCodeString = bin.QrCodeString,
-                        CreatedAt = bin.CreatedAt,
-                        UpdatedAt = bin.UpdatedAt
-                    })
                     .ToListAsync();
 
-                return Ok(bins);
+                var occupiedUnitsByBin = await GetOccupiedUnitsByBinAsync();
+                var hasReconciled = false;
+                foreach (var bin in bins)
+                {
+                    if (TryResolveFixedCapacity(bin.BinSize, out var fixedCapacity) && bin.BinCapacity != fixedCapacity)
+                    {
+                        bin.BinCapacity = fixedCapacity;
+                        hasReconciled = true;
+                    }
+                    var computedOccupied = occupiedUnitsByBin.TryGetValue(bin.BinId, out var units)
+                        ? Math.Min(units, Math.Max(bin.BinCapacity, 0))
+                        : 0;
+                    var computedAvailable = computedOccupied < bin.BinCapacity;
+                    var computedStatus = computedOccupied > 0 ? "Occupied" : "Available";
+
+                    if (bin.OccupiedQty == computedOccupied &&
+                        bin.IsAvailable == computedAvailable &&
+                        string.Equals(bin.BinStatus, computedStatus, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    bin.OccupiedQty = computedOccupied;
+                    bin.IsAvailable = computedAvailable;
+                    bin.BinStatus = computedStatus;
+                    bin.UpdatedAt = DateTime.UtcNow;
+                    hasReconciled = true;
+                }
+
+                if (hasReconciled)
+                {
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(bins.Select(bin => new BinLocationListItemDto
+                {
+                    BinId = bin.BinId,
+                    Branch = bin.Branch,
+                    BinLocation = bin.BinLocationCode,
+                    BinStatus = bin.BinStatus,
+                    BinSize = bin.BinSize,
+                    BinCapacity = bin.BinCapacity,
+                    OccupiedQty = bin.OccupiedQty,
+                    QrCodeString = BuildQrCodeString(bin.BinId, bin.BinLocationCode),
+                    CreatedAt = bin.CreatedAt,
+                    UpdatedAt = bin.UpdatedAt
+                }).ToList());
             }
             catch (Exception ex)
             {
@@ -70,12 +116,13 @@ namespace Server.Controllers
                     .Select(bin => new BinLocationListItemDto
                     {
                         BinId = bin.BinId,
+                        Branch = bin.Branch,
                         BinLocation = bin.BinLocationCode,
                         BinStatus = bin.BinStatus,
                         BinSize = bin.BinSize,
                         BinCapacity = bin.BinCapacity,
                         OccupiedQty = bin.OccupiedQty,
-                        QrCodeString = bin.QrCodeString,
+                        QrCodeString = BuildQrCodeString(bin.BinId, bin.BinLocationCode),
                         CreatedAt = bin.CreatedAt,
                         UpdatedAt = bin.UpdatedAt
                     })
@@ -100,18 +147,6 @@ namespace Server.Controllers
             {
                 var bin = await _context.BinLocations
                     .Where(item => item.BinId == id)
-                    .Select(item => new BinLocationListItemDto
-                    {
-                        BinId = item.BinId,
-                        BinLocation = item.BinLocationCode,
-                        BinStatus = item.BinStatus,
-                        BinSize = item.BinSize,
-                        BinCapacity = item.BinCapacity,
-                        OccupiedQty = item.OccupiedQty,
-                        QrCodeString = item.QrCodeString,
-                        CreatedAt = item.CreatedAt,
-                        UpdatedAt = item.UpdatedAt
-                    })
                     .FirstOrDefaultAsync();
 
                 if (bin == null)
@@ -119,7 +154,40 @@ namespace Server.Controllers
                     return NotFound(new ApiMessageDto { Message = "Bin location not found." });
                 }
 
-                return Ok(bin);
+                var occupiedUnitsByBin = await GetOccupiedUnitsByBinAsync();
+                if (TryResolveFixedCapacity(bin.BinSize, out var fixedCapacity) && bin.BinCapacity != fixedCapacity)
+                {
+                    bin.BinCapacity = fixedCapacity;
+                }
+                var computedOccupied = occupiedUnitsByBin.TryGetValue(bin.BinId, out var units)
+                    ? Math.Min(units, Math.Max(bin.BinCapacity, 0))
+                    : 0;
+                var computedAvailable = computedOccupied < bin.BinCapacity;
+                var computedStatus = computedOccupied > 0 ? "Occupied" : "Available";
+                if (bin.OccupiedQty != computedOccupied ||
+                    bin.IsAvailable != computedAvailable ||
+                    !string.Equals(bin.BinStatus, computedStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    bin.OccupiedQty = computedOccupied;
+                    bin.IsAvailable = computedAvailable;
+                    bin.BinStatus = computedStatus;
+                    bin.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(new BinLocationListItemDto
+                {
+                    BinId = bin.BinId,
+                    Branch = bin.Branch,
+                    BinLocation = bin.BinLocationCode,
+                    BinStatus = bin.BinStatus,
+                    BinSize = bin.BinSize,
+                    BinCapacity = bin.BinCapacity,
+                    OccupiedQty = bin.OccupiedQty,
+                    QrCodeString = BuildQrCodeString(bin.BinId, bin.BinLocationCode),
+                    CreatedAt = bin.CreatedAt,
+                    UpdatedAt = bin.UpdatedAt
+                });
             }
             catch (Exception ex)
             {
@@ -148,31 +216,39 @@ namespace Server.Controllers
                     return BadRequest(new ApiMessageDto { Message = "Bin location is required." });
                 }
 
-                if (dto.BinCapacity <= 0)
+                if (string.IsNullOrWhiteSpace(sanitizedSize))
                 {
-                    return BadRequest(new ApiMessageDto { Message = "Bin capacity must be greater than zero." });
+                    return BadRequest(new ApiMessageDto { Message = "Bin size is required." });
                 }
 
-                var duplicate = await _context.BinLocations.AnyAsync(bin => bin.BinLocationCode == sanitizedLocation);
+                if (!TryResolveFixedCapacity(sanitizedSize, out var fixedCapacity))
+                {
+                    return BadRequest(new ApiMessageDto { Message = "Bin size is invalid." });
+                }
+
+                var duplicate = await _context.BinLocations.AnyAsync(bin =>
+                    bin.BinLocationCode == sanitizedLocation &&
+                    bin.Branch == branchName);
                 if (duplicate)
                 {
-                    return Conflict(new ApiMessageDto { Message = "Bin location already exists." });
+                    return Conflict(new ApiMessageDto { Message = "Bin location already exists for this branch." });
                 }
 
                 var bin = new BinLocation
                 {
-                    BinId = Guid.NewGuid().ToString(),
+                    BinId = IdGenerator.Create("BIN"),
                     BinLocationCode = sanitizedLocation,
+                    Branch = branchName,
                     BinStatus = "Available",
                     IsAvailable = true,
                     BinSize = sanitizedSize,
-                    BinCapacity = dto.BinCapacity,
+                    BinCapacity = fixedCapacity,
                     OccupiedQty = 0,
                     QrCodeString = string.Empty,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                bin.QrCodeString = BuildQrCodeString(bin.BinId);
+                bin.QrCodeString = BuildQrCodeString(bin.BinId, bin.BinLocationCode);
 
                 _context.BinLocations.Add(bin);
                 _context.AuditLogs.Add(new AuditLog
@@ -222,17 +298,34 @@ namespace Server.Controllers
                     return BadRequest(new ApiMessageDto { Message = "Bin location is required." });
                 }
 
-                if (dto.BinCapacity <= 0)
+                if (string.IsNullOrWhiteSpace(sanitizedSize))
                 {
-                    return BadRequest(new ApiMessageDto { Message = "Bin capacity must be greater than zero." });
+                    return BadRequest(new ApiMessageDto { Message = "Bin size is required." });
+                }
+
+                if (!TryResolveFixedCapacity(sanitizedSize, out var fixedCapacity))
+                {
+                    return BadRequest(new ApiMessageDto { Message = "Bin size is invalid." });
+                }
+
+                if (bin.OccupiedQty > fixedCapacity)
+                {
+                    return BadRequest(new ApiMessageDto
+                    {
+                        Message = $"Cannot change size to {sanitizedSize}: current occupied units ({bin.OccupiedQty}) exceed fixed capacity ({fixedCapacity})."
+                    });
                 }
 
                 bin.BinLocationCode = sanitizedLocation;
                 bin.BinSize = sanitizedSize;
-                bin.BinCapacity = dto.BinCapacity;
+                bin.BinCapacity = fixedCapacity;
+                if (User.IsInRole("SuperAdmin") && !string.IsNullOrWhiteSpace(dto.Branch))
+                {
+                    bin.Branch = dto.Branch.Trim();
+                }
                 bin.BinStatus = string.IsNullOrWhiteSpace(dto.BinStatus) ? "Available" : dto.BinStatus;
                 bin.IsAvailable = bin.BinStatus == "Available";
-                bin.QrCodeString = BuildQrCodeString(bin.BinId);
+                bin.QrCodeString = BuildQrCodeString(bin.BinId, bin.BinLocationCode);
                 bin.UpdatedAt = DateTime.UtcNow;
 
                 _context.AuditLogs.Add(new AuditLog
@@ -272,6 +365,20 @@ namespace Server.Controllers
                 if (bin == null)
                 {
                     return NotFound(new ApiMessageDto { Message = "Bin location not found." });
+                }
+
+                var activeInventoryCount = await _context.Inventory.CountAsync(item =>
+                    item.BinId == id &&
+                    item.IsBinAssigned &&
+                    item.WorkflowStatus != "Archived");
+                var hasActiveInventory = activeInventoryCount > 0;
+                var isBinActive = bin.BinStatus != "Archived";
+                if ((isBinActive && bin.OccupiedQty > 0) || hasActiveInventory)
+                {
+                    return Conflict(new ApiMessageDto
+                    {
+                        Message = $"Cannot archive bin {bin.BinLocationCode}: occupied slots {bin.OccupiedQty}/{bin.BinCapacity}, active assigned products {activeInventoryCount}. Clear assignments first."
+                    });
                 }
 
                 var location = bin.BinLocationCode;
@@ -341,6 +448,95 @@ namespace Server.Controllers
                     Message = $"An internal server error occurred. {ex.Message}",
                 });
             }
+        }
+
+        [Authorize(Roles = "BranchManager,SuperAdmin")]
+        [HttpPost("normalize-bin-qr")]
+        public async Task<ActionResult<ApiMessageDto>> NormalizeBinQrAsync()
+        {
+            try
+            {
+                var bins = await _context.BinLocations.ToListAsync();
+                if (bins.Count == 0)
+                {
+                    return Ok(new ApiMessageDto { Message = "No bins found to normalize." });
+                }
+
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUserName = User.Identity?.Name ?? "Admin";
+                var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+                var branchName = currentUser?.Branch ?? "N/A";
+
+                var updatedCount = 0;
+                foreach (var bin in bins)
+                {
+                    var expectedQr = BuildQrCodeString(bin.BinId, bin.BinLocationCode);
+                    if (string.Equals(bin.QrCodeString, expectedQr, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    bin.QrCodeString = expectedQr;
+                    bin.UpdatedAt = DateTime.UtcNow;
+                    updatedCount++;
+                }
+
+                if (updatedCount > 0)
+                {
+                    _context.AuditLogs.Add(new AuditLog
+                    {
+                        UserId = currentUserId ?? "N/A",
+                        Action = "NormalizeBinQr",
+                        Branch = branchName,
+                        PerformedBy = currentUserName,
+                        Description = $"{currentUserName} normalized QR payloads for {updatedCount} bin location(s).",
+                        DatePerformed = DateTime.UtcNow
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new ApiMessageDto
+                {
+                    Message = updatedCount == 0
+                        ? "Bin QR payloads are already normalized."
+                        : $"Normalized QR payloads for {updatedCount} bin(s)."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiMessageDto
+                {
+                    Message = $"An internal server error occurred. {ex.Message}",
+                });
+            }
+        }
+
+        private async Task<Dictionary<string, int>> GetOccupiedUnitsByBinAsync()
+        {
+            var inventoryAssignments = await _context.Inventory
+                .Where(item =>
+                    item.IsBinAssigned &&
+                    !string.IsNullOrWhiteSpace(item.BinId) &&
+                    item.WorkflowStatus != "Archived" &&
+                    item.QuantityOnHand > 0)
+                .Select(item => new
+                {
+                    BinId = item.BinId!,
+                    item.QuantityOnHand
+                })
+                .ToListAsync();
+
+            return inventoryAssignments
+                .GroupBy(item => item.BinId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Sum(item => Math.Max(item.QuantityOnHand, 0)));
+        }
+
+        private static bool TryResolveFixedCapacity(string size, out int capacity)
+        {
+            var normalized = (size ?? string.Empty).Trim().ToUpperInvariant();
+            return FixedCapacityBySize.TryGetValue(normalized, out capacity);
         }
     }
 }

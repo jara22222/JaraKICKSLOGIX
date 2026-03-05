@@ -18,8 +18,7 @@ namespace Server.Data.Seeders
                 "Receiver",
                 "PutAway",
                 "DispatchClerk",
-                "VASPersonnel",
-                "Supplier"
+                "VASPersonnel"
             };
 
             foreach (var role in roles)

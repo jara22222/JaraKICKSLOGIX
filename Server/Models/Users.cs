@@ -12,7 +12,7 @@ namespace Server.Models
     {
         [MaxLength(20)]
         public string FirstName { get; set; } = string.Empty;
-        [MaxLength(1)]
+        [MaxLength(50)]
         public string? MiddleName { get; set; } = string.Empty;
         [MaxLength(20)]
         public string LastName { get; set; } = string.Empty;
@@ -23,6 +23,7 @@ namespace Server.Models
         public string Address { get; set; } = string.Empty;
         public string IsActive { get; set; } = string.Empty;
         public virtual ICollection<Inventory> InventoryItems { get; set; } = new List<Inventory>();
+        public virtual ICollection<Order> ApprovedOrders { get; set; } = new List<Order>();
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
     }

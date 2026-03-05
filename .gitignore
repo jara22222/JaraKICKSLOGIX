@@ -1,0 +1,31 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs
+*.log
+logs/
+
+# Environment / secrets
+**/.env
+**/.env.*
+!**/.env.example
+Server/appsettings.Local.json
+Server/appsettings.Production.json
+
+# Node
+**/node_modules/
+Client/dist/
+Client/dist-ssr/
+
+# .NET build output
+**/bin/
+**/obj/
+Server/temp-build/
+Server/build-check/

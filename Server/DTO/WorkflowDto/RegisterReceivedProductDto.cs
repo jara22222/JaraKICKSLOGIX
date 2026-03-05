@@ -4,6 +4,9 @@ namespace Server.DTO.WorkflowDto
 {
     public class RegisterReceivedProductDto
     {
+        [StringLength(128)]
+        public string? ShipmentId { get; set; }
+
         [Required]
         [StringLength(100)]
         public string Supplier { get; set; } = string.Empty;

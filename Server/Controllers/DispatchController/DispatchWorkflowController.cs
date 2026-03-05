@@ -7,6 +7,7 @@ using Server.DTO;
 using Server.DTO.WorkflowDto;
 using Server.Hubs.BranchManagerHub;
 using Server.Models;
+using Server.Utilities;
 using System.Security.Claims;
 
 namespace Server.Controllers.DispatchController
@@ -42,6 +43,18 @@ namespace Server.Controllers.DispatchController
                     OrderId = order.OrderId,
                     SKU = order.SKU,
                     Size = order.Size,
+                    BinLocation = _context.Inventory
+                        .Where(item =>
+                            item.SKU == order.SKU &&
+                            item.Size == order.Size &&
+                            item.QuantityOnHand > 0 &&
+                            !string.IsNullOrWhiteSpace(item.BinId))
+                        .OrderBy(item => item.DateReceived)
+                        .Select(item => _context.BinLocations
+                            .Where(bin => bin.BinId == item.BinId)
+                            .Select(bin => bin.BinLocationCode)
+                            .FirstOrDefault() ?? "Unassigned")
+                        .FirstOrDefault() ?? "Unassigned",
                     Quantity = order.Quantity,
                     Status = order.Status,
                     CustomerName = order.CustomerName,
@@ -52,6 +65,66 @@ namespace Server.Controllers.DispatchController
                 .ToListAsync();
 
             return Ok(orders);
+        }
+
+        [Authorize(Roles = "DispatchClerk")]
+        [HttpGet("activity-log")]
+        public async Task<ActionResult<List<DispatchActivityDto>>> GetActivityLogAsync()
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(currentUserId))
+            {
+                return Unauthorized(new ApiMessageDto { Message = "User identity is missing." });
+            }
+
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == currentUserId);
+            if (currentUser == null)
+            {
+                return Unauthorized(new ApiMessageDto { Message = "User account not found." });
+            }
+
+            var dispatchRoleId = await _context.Roles
+                .Where(role => role.Name == "DispatchClerk")
+                .Select(role => role.Id)
+                .FirstOrDefaultAsync();
+
+            if (string.IsNullOrWhiteSpace(dispatchRoleId))
+            {
+                return Ok(new List<DispatchActivityDto>());
+            }
+
+            var dispatchUserIds = await _context.UserRoles
+                .Where(userRole => userRole.RoleId == dispatchRoleId)
+                .Select(userRole => userRole.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            if (dispatchUserIds.Count == 0)
+            {
+                return Ok(new List<DispatchActivityDto>());
+            }
+
+            var currentBranch = currentUser.Branch ?? string.Empty;
+            var allowedActions = new[] { "DispatchToVAS", "Dispatch" };
+            var logs = await _context.StockMovements
+                .Where(movement =>
+                    !string.IsNullOrWhiteSpace(movement.PerformedByUserId) &&
+                    dispatchUserIds.Contains(movement.PerformedByUserId) &&
+                    allowedActions.Contains(movement.Action) &&
+                    (string.IsNullOrWhiteSpace(currentBranch) || movement.Branch == currentBranch))
+                .OrderByDescending(movement => movement.OccurredAt)
+                .Take(500)
+                .Select(movement => new DispatchActivityDto
+                {
+                    Id = movement.MovementId,
+                    User = string.IsNullOrWhiteSpace(movement.PerformedBy) ? "System" : movement.PerformedBy,
+                    Action = movement.Action,
+                    Description = movement.Description,
+                    Timestamp = movement.OccurredAt.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                })
+                .ToListAsync();
+
+            return Ok(logs);
         }
 
         [Authorize(Roles = "DispatchClerk")]
@@ -72,6 +145,7 @@ namespace Server.Controllers.DispatchController
             order.Status = "DispatchClaimed";
             order.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+            await BroadcastOutboundQueueUpdatedAsync(order);
             return Ok(new ApiMessageDto { Message = "Dispatch task claimed. Proceed to item scan." });
         }
 
@@ -90,15 +164,80 @@ namespace Server.Controllers.DispatchController
                 return BadRequest(new ApiMessageDto { Message = "Order is not ready for item scan." });
             }
 
-            if (!dto.QrValue.Contains(order.SKU, StringComparison.OrdinalIgnoreCase))
+            var scannedValue = dto.QrValue?.Trim() ?? string.Empty;
+            var requiredSku = order.SKU.Trim();
+            var requiredSize = order.Size.Trim();
+            var hasSku = scannedValue.Contains(requiredSku, StringComparison.OrdinalIgnoreCase);
+            var hasSize = scannedValue.Contains(requiredSize, StringComparison.OrdinalIgnoreCase);
+            if (!(hasSku && hasSize))
             {
-                return BadRequest(new ApiMessageDto { Message = "Scanned item does not match order SKU." });
+                return BadRequest(new ApiMessageDto { Message = "Scanned item does not match order SKU/Size." });
             }
 
-            order.Status = "ItemScanned";
+            var product = await _context.Inventory
+                .Where(item => item.SKU == order.SKU && item.Size == order.Size && item.QuantityOnHand > 0)
+                .OrderBy(item => item.DateReceived)
+                .FirstOrDefaultAsync();
+
+            if (product == null || product.QuantityOnHand < order.Quantity)
+            {
+                return BadRequest(new ApiMessageDto { Message = "Insufficient inventory quantity for this order." });
+            }
+
+            var previousQty = product.QuantityOnHand;
+            product.QuantityOnHand -= order.Quantity;
+            product.ItemQty = product.QuantityOnHand.ToString();
+            product.UpdatedAt = DateTime.UtcNow;
+            await ReleaseBinSlotsIfNeededAsync(product, previousQty, product.QuantityOnHand);
+
+            order.Status = "ToVAS";
             order.UpdatedAt = DateTime.UtcNow;
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUser = await _context.Users.FirstOrDefaultAsync(user => user.Id == userId);
+            var userName = User.Identity?.Name ?? "DispatchClerk";
+            var branch = currentUser?.Branch ?? "N/A";
+
+            _context.StockMovements.Add(new StockMovement
+            {
+                ProductId = product.ProductId,
+                OrderId = order.OrderId,
+                BinId = product.BinId,
+                Branch = branch,
+                Action = "DispatchToVAS",
+                FromStatus = "DispatchClaimed",
+                ToStatus = "ToVAS",
+                Quantity = order.Quantity,
+                PerformedByUserId = userId ?? "N/A",
+                PerformedBy = userName,
+                Description = $"{userName} verified item QR and dispatched qty {order.Quantity} for order {order.OrderId} to VAS.",
+                OccurredAt = DateTime.UtcNow
+            });
+
+            _context.AuditLogs.Add(new AuditLog
+            {
+                UserId = userId ?? "N/A",
+                Action = "Dispatch",
+                Branch = branch,
+                PerformedBy = userName,
+                Description = $"{userName} auto-deducted qty {order.Quantity} for order {order.OrderId} after item QR verification.",
+                DatePerformed = DateTime.UtcNow
+            });
+
+            await PushLowStockNotificationIfNeeded(product, branch);
             await _context.SaveChangesAsync();
-            return Ok(new ApiMessageDto { Message = "Item QR verified. Confirm quantity to transfer to VAS." });
+            await BroadcastOutboundQueueUpdatedAsync(order);
+            await _notificationHub.Clients.All.SendAsync("VASQueueUpdated", new
+            {
+                orderId = order.OrderId,
+                branch = branch,
+                status = order.Status,
+                updatedAt = order.UpdatedAt ?? DateTime.UtcNow
+            });
+            return Ok(new ApiMessageDto
+            {
+                Message = "Item QR verified. Ordered quantity deducted and transferred to VAS."
+            });
         }
 
         [Authorize(Roles = "DispatchClerk")]
@@ -134,9 +273,11 @@ namespace Server.Controllers.DispatchController
                 return BadRequest(new ApiMessageDto { Message = "Insufficient inventory quantity for this order." });
             }
 
+            var previousQty = product.QuantityOnHand;
             product.QuantityOnHand -= dto.Quantity;
             product.ItemQty = product.QuantityOnHand.ToString();
             product.UpdatedAt = DateTime.UtcNow;
+            await ReleaseBinSlotsIfNeededAsync(product, previousQty, product.QuantityOnHand);
 
             order.Quantity = dto.Quantity;
             order.Status = "ToVAS";
@@ -175,7 +316,26 @@ namespace Server.Controllers.DispatchController
 
             await PushLowStockNotificationIfNeeded(product, branch);
             await _context.SaveChangesAsync();
+            await BroadcastOutboundQueueUpdatedAsync(order);
+            await _notificationHub.Clients.All.SendAsync("VASQueueUpdated", new
+            {
+                orderId = order.OrderId,
+                branch = branch,
+                status = order.Status,
+                updatedAt = order.UpdatedAt ?? DateTime.UtcNow
+            });
             return Ok(new ApiMessageDto { Message = "Quantity confirmed. Item transferred to VAS station." });
+        }
+
+        private async Task BroadcastOutboundQueueUpdatedAsync(Order order)
+        {
+            await _notificationHub.Clients.All.SendAsync("OutboundQueueUpdated", new
+            {
+                orderId = order.OrderId,
+                branch = order.Branch ?? "N/A",
+                status = order.Status,
+                updatedAt = order.UpdatedAt ?? DateTime.UtcNow
+            });
         }
 
         private async Task PushLowStockNotificationIfNeeded(Inventory product, string branch)
@@ -206,7 +366,7 @@ namespace Server.Controllers.DispatchController
                 var message = $"Low stock alert: {product.SKU} ({product.Size}) is now {product.QuantityOnHand}.";
                 _context.BranchNotifications.Add(new BranchNotification
                 {
-                    NotificationId = Guid.NewGuid().ToString(),
+                    NotificationId = IdGenerator.Create("NTF"),
                     Branch = branch,
                     RecipientUserId = manager.Id,
                     Type = "LowStock",
@@ -227,6 +387,31 @@ namespace Server.Controllers.DispatchController
                     message
                 });
             }
+        }
+
+        private async Task ReleaseBinSlotsIfNeededAsync(Inventory product, int previousQty, int newQty)
+        {
+            if (string.IsNullOrWhiteSpace(product.BinId))
+            {
+                return;
+            }
+
+            var unitsToRelease = Math.Max(0, previousQty - newQty);
+            if (unitsToRelease <= 0)
+            {
+                return;
+            }
+
+            var bin = await _context.BinLocations.FirstOrDefaultAsync(item => item.BinId == product.BinId);
+            if (bin == null)
+            {
+                return;
+            }
+
+            bin.OccupiedQty = Math.Max(0, bin.OccupiedQty - unitsToRelease);
+            bin.IsAvailable = bin.OccupiedQty < bin.BinCapacity;
+            bin.BinStatus = bin.OccupiedQty > 0 ? "Occupied" : "Available";
+            bin.UpdatedAt = DateTime.UtcNow;
         }
     }
 }

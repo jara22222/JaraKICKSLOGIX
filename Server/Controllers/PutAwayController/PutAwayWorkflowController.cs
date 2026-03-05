@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.DTO;
 using Server.DTO.WorkflowDto;
+using Server.Hubs.BranchManagerHub;
 using Server.Models;
 using System.Security.Claims;
 
@@ -14,10 +16,15 @@ namespace Server.Controllers.PutAwayController
     public class PutAwayWorkflowController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHubContext<BranchNotificationHub> _notificationHub;
 
-        public PutAwayWorkflowController(ApplicationDbContext context)
+        public PutAwayWorkflowController(
+            ApplicationDbContext context,
+            IHubContext<BranchNotificationHub> notificationHub
+        )
         {
             _context = context;
+            _notificationHub = notificationHub;
         }
 
         [Authorize(Roles = "PutAway,Receiver")]
@@ -177,7 +184,7 @@ namespace Server.Controllers.PutAwayController
                 return BadRequest(new ApiMessageDto { Message = "This task is assigned to another put-away user." });
             }
 
-            if (!string.Equals(product.QrString, dto.QrValue.Trim(), StringComparison.OrdinalIgnoreCase))
+            if (!IsMatchingItemQr(product, dto.QrValue))
             {
                 return BadRequest(new ApiMessageDto { Message = "Scanned item QR does not match." });
             }
@@ -227,7 +234,7 @@ namespace Server.Controllers.PutAwayController
                 return NotFound(new ApiMessageDto { Message = "Assigned bin not found." });
             }
 
-            if (!string.Equals(targetBin.QrCodeString, dto.QrValue.Trim(), StringComparison.OrdinalIgnoreCase))
+            if (!IsMatchingBinQr(targetBin, dto.QrValue))
             {
                 return BadRequest(new ApiMessageDto { Message = "Scanned bin QR does not match assigned bin." });
             }
@@ -235,8 +242,8 @@ namespace Server.Controllers.PutAwayController
             await LogPutAwayTransition(product, "StoreInBin", "ItemScanned", "Stored");
             product.WorkflowStatus = "Stored";
             product.UpdatedAt = DateTime.UtcNow;
-            targetBin.BinStatus = "Occupied";
-            targetBin.IsAvailable = false;
+            targetBin.IsAvailable = targetBin.OccupiedQty < targetBin.BinCapacity;
+            targetBin.BinStatus = targetBin.OccupiedQty > 0 ? "Occupied" : "Available";
             targetBin.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -308,6 +315,212 @@ namespace Server.Controllers.PutAwayController
                 Description = $"{currentUserName} moved {product.SKU} from {fromStatus} to {toStatus}.",
                 DatePerformed = DateTime.UtcNow
             });
+
+            await _notificationHub.Clients.All.SendAsync("PutAwayTaskUpdated", new
+            {
+                productId = product.ProductId,
+                sku = product.SKU,
+                action,
+                fromStatus,
+                toStatus,
+                performedBy = currentUserName,
+                branch = branchName,
+                occurredAt = DateTime.UtcNow
+            });
+        }
+
+        private static bool IsMatchingItemQr(Inventory product, string scannedRaw)
+        {
+            var scanned = NormalizeQrValue(scannedRaw);
+            var expected = NormalizeQrValue(product.QrString);
+
+            if (string.IsNullOrWhiteSpace(scanned))
+            {
+                return false;
+            }
+
+            // Primary exact match.
+            if (string.Equals(scanned, expected, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var sku = NormalizeQrValue(product.SKU);
+            var productId = NormalizeQrValue(product.ProductId);
+
+            // Accept direct SKU scan (fallback stickers/manual entry).
+            if (!string.IsNullOrWhiteSpace(sku) &&
+                string.Equals(scanned, sku, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Accept structured payloads that include PID / SKU tokens.
+            if (ContainsQrToken(scanned, "PID", productId))
+            {
+                return true;
+            }
+            if (ContainsQrToken(scanned, "PRODUCTID", productId))
+            {
+                return true;
+            }
+            if (ContainsQrToken(scanned, "SKU", sku))
+            {
+                return true;
+            }
+
+            // Legacy format example: PRODUCT:{SKU}:{GUID}
+            var expectedSkuFromLegacy = ExtractLegacySku(expected);
+            if (!string.IsNullOrWhiteSpace(expectedSkuFromLegacy) &&
+                ContainsQrToken(scanned, "SKU", expectedSkuFromLegacy))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string NormalizeQrValue(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return value.Trim().Replace("\r", "").Replace("\n", "");
+        }
+
+        private static bool ContainsQrToken(string scanned, string tokenName, string expectedValue)
+        {
+            if (string.IsNullOrWhiteSpace(expectedValue))
+            {
+                return false;
+            }
+
+            var marker = $"{tokenName}:";
+            var parts = scanned.Split('|', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts)
+            {
+                var segment = part.Trim();
+                if (!segment.StartsWith(marker, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var tokenValue = segment.Substring(marker.Length).Trim();
+                if (string.Equals(tokenValue, expectedValue, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string ExtractLegacySku(string expectedQr)
+        {
+            if (string.IsNullOrWhiteSpace(expectedQr))
+            {
+                return string.Empty;
+            }
+
+            var parts = expectedQr.Split(':', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2)
+            {
+                return string.Empty;
+            }
+
+            if (!string.Equals(parts[0], "PRODUCT", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+
+            return parts[1].Trim();
+        }
+
+        private static bool IsMatchingBinQr(BinLocation targetBin, string scannedRaw)
+        {
+            var scanned = NormalizeQrValue(scannedRaw);
+            var expected = NormalizeQrValue(targetBin.QrCodeString);
+
+            if (string.IsNullOrWhiteSpace(scanned))
+            {
+                return false;
+            }
+
+            // Exact string match first.
+            if (string.Equals(scanned, expected, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Support tokenized QR payloads.
+            if (ContainsQrToken(scanned, "BIN", targetBin.BinId))
+            {
+                return true;
+            }
+            if (ContainsQrToken(scanned, "BINID", targetBin.BinId))
+            {
+                return true;
+            }
+            if (ContainsQrToken(scanned, "LOC", targetBin.BinLocationCode))
+            {
+                return true;
+            }
+            if (ContainsQrToken(scanned, "BINLOCATION", targetBin.BinLocationCode))
+            {
+                return true;
+            }
+
+            // Support URL payloads across different hosts/protocols:
+            // e.g. http://localhost:5173/binlocation/product/{binId}
+            //      https://192.168.x.x:5173/binlocation/product/{binId}
+            var scannedBinId = ExtractBinIdFromUrlLikeQr(scanned);
+            if (!string.IsNullOrWhiteSpace(scannedBinId) &&
+                string.Equals(scannedBinId, targetBin.BinId, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Last fallback: allow direct bin location code scan.
+            if (string.Equals(
+                scanned,
+                NormalizeQrValue(targetBin.BinLocationCode),
+                StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string? ExtractBinIdFromUrlLikeQr(string qrValue)
+        {
+            if (string.IsNullOrWhiteSpace(qrValue))
+            {
+                return null;
+            }
+
+            var candidate = qrValue.Trim();
+            if (!candidate.Contains("://", StringComparison.Ordinal))
+            {
+                candidate = $"http://{candidate}";
+            }
+
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri))
+            {
+                return null;
+            }
+
+            var segments = uri.AbsolutePath
+                .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (segments.Length == 0)
+            {
+                return null;
+            }
+
+            var maybeId = segments[^1];
+            return string.IsNullOrWhiteSpace(maybeId) ? null : maybeId;
         }
     }
 }

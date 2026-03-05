@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Server.Utilities;
 
 namespace Server.Models
 {
@@ -8,7 +9,7 @@ namespace Server.Models
     {
         [Key]
         [MaxLength(36)]
-        public string ProductId { get; set; } = Guid.NewGuid().ToString();
+        public string ProductId { get; set; } = IdGenerator.Create("PRD");
 
         [MaxLength(450)]
         public string SupplierId { get; set; } = string.Empty;
@@ -41,6 +42,7 @@ namespace Server.Models
 
         [MaxLength(128)]
         public string? BinId { get; set; }
+        public virtual BinLocation? BinLocation { get; set; }
 
         public bool IsBinAssigned { get; set; }
         public DateTime DateReceived { get; set; } = DateTime.UtcNow;
