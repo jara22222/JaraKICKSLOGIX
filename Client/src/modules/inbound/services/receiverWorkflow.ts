@@ -1,6 +1,7 @@
 import apiClient from "@/services/apiClient";
 
 export interface RegisterReceivedProductPayload {
+  shipmentId?: string;
   supplier: string;
   productName: string;
   sku: string;

@@ -1,5 +1,6 @@
 import {
   Archive,
+  ChevronRight,
   Eye,
   Footprints,
   LogOut,
@@ -7,16 +8,17 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
-  Truck,
   Users,
   X,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { UseAuth } from "../security/UseAuth";
+import ThemeToggleButton from "../theme/ThemeToggleButton";
 
 export default function SuperAdminMobileSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, logout } = UseAuth();
 
   const NavItem = ({
@@ -36,7 +38,10 @@ export default function SuperAdminMobileSidebar() {
     return (
       <Link
         to={link.startsWith("/") ? link : `/superadmin/${link}`}
-        onClick={() => setIsMobileOpen(false)}
+        onClick={() => {
+          setIsProfileOpen(false);
+          setIsMobileOpen(false);
+        }}
         className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all group ${
           isActive
             ? "bg-gradient-to-r from-[#FFD700]/15 to-transparent border-l-4 border-[#FFD700] text-white"
@@ -92,18 +97,19 @@ export default function SuperAdminMobileSidebar() {
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto py-4 scrollbar-hide">
           <p className="px-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-            God View
+            Governance
           </p>
           <NavItem icon={<Eye className="size-5" />} label="Overview" link="" />
           <NavItem icon={<Users className="size-5" />} label="Branch Managers" link="managers" />
           <NavItem icon={<Archive className="size-5" />} label="Archived Users" link="archived" />
-          <NavItem icon={<Truck className="size-5" />} label="Supplier Registry" link="suppliers" />
           <NavItem icon={<ScrollText className="size-5" />} label="Audit Logs" link="auditlogs" />
-          <NavItem icon={<Settings className="size-5" />} label="Account Settings" link="/settings/profile" />
         </nav>
 
         <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group">
+          <div
+            onClick={() => setIsProfileOpen((prev) => !prev)}
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group"
+          >
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-600 border-2 border-[#FFD700]/30 flex items-center justify-center">
               <ShieldCheck className="size-4 text-[#001F3F]" />
             </div>
@@ -115,14 +121,33 @@ export default function SuperAdminMobileSidebar() {
                 {user?.roles?.[0] || "Super Admin"}
               </span>
             </div>
+            <ChevronRight
+              className={`ml-auto size-4 text-slate-400 transition-transform duration-200 ${isProfileOpen ? "-rotate-90 text-white" : ""}`}
+            />
           </div>
-          <button
-            onClick={logout}
-            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
-          >
-            <LogOut className="size-4" />
-            Sign Out
-          </button>
+          {isProfileOpen && (
+            <div className="mt-2 space-y-1 rounded-lg border border-white/10 bg-white/5 p-2">
+              <Link
+                to="/settings/profile"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  setIsMobileOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/10 transition-colors"
+              >
+                <Settings className="size-4" />
+                Account Settings
+              </Link>
+              <ThemeToggleButton className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/10 transition-colors" />
+              <button
+                onClick={logout}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
+              >
+                <LogOut className="size-4" />
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>

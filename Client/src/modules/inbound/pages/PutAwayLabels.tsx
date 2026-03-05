@@ -1,5 +1,6 @@
 import InboundHeader from "@/modules/inbound/components/InboundHeader";
 import HeaderCell from "@/shared/components/HeaderCell";
+import { getHubUrl } from "@/shared/config/api";
 import {
   claimPutAwayTask,
   getPendingPutAwayProducts,
@@ -12,18 +13,28 @@ import {
   type IncomingShipment,
 } from "@/modules/inbound/services/inboundData";
 import { formatInboundStatus } from "@/modules/inbound/utils/statusFormat";
-import { registerReceivedProduct } from "@/modules/inbound/services/receiverWorkflow";
+import {
+  getAssignedItems,
+  registerReceivedProduct,
+  type AssignedItem,
+} from "@/modules/inbound/services/receiverWorkflow";
 import {
   getBinLocations,
   type BinLocationItemResponse,
 } from "@/modules/bin-management/services/binLocation";
 import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
+import {
+  HubConnectionBuilder,
+  HubConnectionState,
+  LogLevel,
+} from "@microsoft/signalr";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, ScanLine, Warehouse, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { Navigate } from "react-router-dom";
 
 export default function PutAwayLabels() {
+  const getRequiredUnits = (qty: number) => Math.max(qty, 0);
   const queryClient = useQueryClient();
   const [assignTarget, setAssignTarget] = useState<IncomingShipment | null>(null);
   const [selectedBinId, setSelectedBinId] = useState("");
@@ -32,6 +43,8 @@ export default function PutAwayLabels() {
   const [scanValue, setScanValue] = useState("");
   const [cameraError, setCameraError] = useState("");
   const [isCameraScanning, setIsCameraScanning] = useState(false);
+  const [isStartingCamera, setIsStartingCamera] = useState(false);
+  const [cameraMode, setCameraMode] = useState<"item" | "bin" | null>(null);
   const scannerRef = useRef<any>(null);
   const hasDecodedRef = useRef(false);
   const userRoles: string[] = useMemo(() => {
@@ -78,6 +91,12 @@ export default function PutAwayLabels() {
     enabled: canAccessPutAway,
     retry: false,
   });
+  const { data: assignedItems = [] } = useQuery({
+    queryKey: ["receiver-assigned-items"],
+    queryFn: getAssignedItems,
+    enabled: hasReceiverRole,
+    retry: false,
+  });
 
   if (!canAccessPutAway) {
     return <Navigate to="/unauthorized" replace />;
@@ -89,8 +108,42 @@ export default function PutAwayLabels() {
   const assignableShipments = incomingShipments.filter(
     (shipment) => shipment.status === "Arrived",
   );
-  const getSuggestedBinLocation = (size: string, qty: number) => {
-    const sizeBins = bins.filter((bin) => bin.binSize === size);
+  const normalizeValue = (value: string) => value.trim().toUpperCase();
+  const assignedItemsByBin = useMemo(() => {
+    const grouped = new Map<string, AssignedItem[]>();
+    for (const item of assignedItems) {
+      if (!item.binId) continue;
+      const current = grouped.get(item.binId) ?? [];
+      current.push(item);
+      grouped.set(item.binId, current);
+    }
+    return grouped;
+  }, [assignedItems]);
+
+  const isBinCompatibleWithShipment = (binId: string, shipment: IncomingShipment) => {
+    const existingItems = assignedItemsByBin.get(binId) ?? [];
+    if (existingItems.length === 0) return true;
+
+    const targetSku = normalizeValue(shipment.sku);
+    const targetProductName = normalizeValue(shipment.product);
+    const targetSize = normalizeValue(shipment.size);
+
+    return existingItems.every(
+      (item) =>
+        normalizeValue(item.sku) === targetSku &&
+        normalizeValue(item.productName) === targetProductName &&
+        normalizeValue(item.size) === targetSize,
+    );
+  };
+
+  const getSuggestedBinLocation = (shipment: IncomingShipment) => {
+    const requiredUnits = getRequiredUnits(shipment.qty);
+    const sizeBins = bins.filter(
+      (bin) =>
+        bin.binSize === shipment.size &&
+        bin.binStatus !== "Archived" &&
+        isBinCompatibleWithShipment(bin.binId, shipment),
+    );
     const withRemaining = sizeBins
       .map((bin) => ({
         ...bin,
@@ -103,7 +156,7 @@ export default function PutAwayLabels() {
     }
 
     const exactFit = withRemaining
-      .filter((bin) => bin.remainingCapacity >= qty)
+      .filter((bin) => bin.remainingCapacity >= requiredUnits)
       .sort((a, b) => a.remainingCapacity - b.remainingCapacity)[0];
     if (exactFit) {
       return { location: exactFit.binLocation, enoughCapacity: true };
@@ -113,15 +166,20 @@ export default function PutAwayLabels() {
       (a, b) => b.remainingCapacity - a.remainingCapacity,
     )[0];
     return {
-      location: `${bestPartial.binLocation} (partial: ${bestPartial.remainingCapacity} free)`,
+      location: `${bestPartial.binLocation} (partial: ${bestPartial.remainingCapacity} units free)`,
       enoughCapacity: false,
     };
   };
-  const getAvailableSlots = (size: string): (BinLocationItemResponse & {
+  const getAvailableSlots = (shipment: IncomingShipment): (BinLocationItemResponse & {
     remainingCapacity: number;
   })[] => {
     return bins
-      .filter((bin) => bin.binSize === size)
+      .filter(
+        (bin) =>
+          bin.binSize === shipment.size &&
+          bin.binStatus !== "Archived" &&
+          isBinCompatibleWithShipment(bin.binId, shipment),
+      )
       .map((bin) => ({
         ...bin,
         remainingCapacity: Math.max((bin.binCapacity ?? 0) - (bin.occupiedQty ?? 0), 0),
@@ -131,13 +189,8 @@ export default function PutAwayLabels() {
   };
 
   const assignMutation = useMutation({
-    mutationFn: ({
-      shipmentId: _shipmentId,
-      payload,
-    }: {
-      shipmentId: string;
-      payload: Parameters<typeof registerReceivedProduct>[0];
-    }) => registerReceivedProduct(payload),
+    mutationFn: (payload: Parameters<typeof registerReceivedProduct>[0]) =>
+      registerReceivedProduct(payload),
     onSuccess: (data, _variables) => {
       showSuccessToast(`Assigned to bin ${data.binLocation}.`);
       setAssignTarget(null);
@@ -190,7 +243,7 @@ export default function PutAwayLabels() {
   });
   const openAssignModal = (shipment: IncomingShipment) => {
     setAssignTarget(shipment);
-    const slots = getAvailableSlots(shipment.size);
+    const slots = getAvailableSlots(shipment);
     setSelectedBinId(slots[0]?.binId ?? "");
   };
   const canCurrentUserProcess = (task: PutAwayTask) => {
@@ -231,7 +284,9 @@ export default function PutAwayLabels() {
   ];
 
   const stopCameraScanner = async () => {
+    setIsStartingCamera(false);
     setIsCameraScanning(false);
+    setCameraMode(null);
     hasDecodedRef.current = false;
     if (!scannerRef.current) return;
     try {
@@ -251,15 +306,37 @@ export default function PutAwayLabels() {
 
   const startCameraScanner = async (mode: "item" | "bin") => {
     setCameraError("");
+    setIsStartingCamera(true);
     hasDecodedRef.current = false;
     await stopCameraScanner();
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
-      const scanner = new Html5Qrcode("putaway-qr-reader");
+      const readerElementId =
+        mode === "item" ? "putaway-item-qr-reader" : "putaway-bin-qr-reader";
+      const readerElement = document.getElementById(readerElementId);
+      if (!readerElement) {
+        throw new Error("QR reader container not found.");
+      }
+
+      const cameras = await Html5Qrcode.getCameras();
+      if (!cameras || cameras.length === 0) {
+        throw new Error("No camera was found on this device.");
+      }
+
+      const rearCamera =
+        cameras.find((camera) => /back|rear|environment/i.test(camera.label)) ?? cameras[0];
+
+      const scanner = new Html5Qrcode(readerElementId);
       scannerRef.current = scanner;
+      setCameraMode(mode);
       await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
+        rearCamera.id,
+        {
+          fps: 10,
+          qrbox: { width: 220, height: 220 },
+          rememberLastUsedCamera: true,
+          aspectRatio: 1.333334,
+        },
         (decodedText: string) => {
           if (hasDecodedRef.current) return;
           hasDecodedRef.current = true;
@@ -284,32 +361,86 @@ export default function PutAwayLabels() {
         },
       );
       setIsCameraScanning(true);
-    } catch {
+      setIsStartingCamera(false);
+    } catch (error: any) {
+      const rawMessage =
+        typeof error?.message === "string" ? error.message : "Unable to start camera scanner.";
+      const hint =
+        "Use HTTPS URL and allow camera permission. Example: https://<your-lan-ip>:5173";
       setCameraError(
-        "Camera scanner failed. On mobile, camera requires HTTPS. If no permission prompt appears, use manual QR input.",
+        `${rawMessage} ${hint}`,
       );
+      setIsStartingCamera(false);
+      setCameraMode(null);
     }
   };
 
   useEffect(() => {
-    if (itemScanTarget) {
-      void startCameraScanner("item");
-    }
     return () => {
       void stopCameraScanner();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemScanTarget?.productId]);
+  }, []);
 
   useEffect(() => {
-    if (binScanTarget) {
-      void startCameraScanner("bin");
-    }
-    return () => {
-      void stopCameraScanner();
+    if (!canAccessPutAway) return;
+
+    const token = localStorage.getItem("token") ?? "";
+    if (!token) return;
+
+    let isDisposed = false;
+    const connection = new HubConnectionBuilder()
+      .withUrl(getHubUrl("branch-notificationHub"), {
+        accessTokenFactory: () => token,
+        withCredentials: false,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.None)
+      .build();
+
+    const refreshLabelingQueues = () => {
+      void queryClient.invalidateQueries({ queryKey: ["inbound-incoming-shipments"] });
+      void queryClient.invalidateQueries({ queryKey: ["putaway-pending-products"] });
+      void queryClient.invalidateQueries({ queryKey: ["receiver-assigned-items"] });
+      void queryClient.invalidateQueries({ queryKey: ["inbound-receipts"] });
+      void queryClient.invalidateQueries({ queryKey: ["inbound-kpis"] });
+      void queryClient.invalidateQueries({ queryKey: ["inbound-activity-log"] });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [binScanTarget?.productId]);
+
+    connection.on("InboundShipmentApproved", refreshLabelingQueues);
+    connection.on("InboundShipmentSubmitted", refreshLabelingQueues);
+    connection.on("InboundQueueUpdated", refreshLabelingQueues);
+    connection.on("PutAwayTaskUpdated", refreshLabelingQueues);
+
+    const startConnection = async () => {
+      if (isDisposed) return;
+      try {
+        await connection.start();
+      } catch (error) {
+        if (isDisposed) return;
+        const message = error instanceof Error ? error.message.toLowerCase() : "";
+        if (message.includes("stopped during negotiation") || message.includes("aborted")) {
+          return;
+        }
+      }
+    };
+
+    void startConnection();
+
+    return () => {
+      isDisposed = true;
+      connection.off("InboundShipmentApproved", refreshLabelingQueues);
+      connection.off("InboundShipmentSubmitted", refreshLabelingQueues);
+      connection.off("InboundQueueUpdated", refreshLabelingQueues);
+      connection.off("PutAwayTaskUpdated", refreshLabelingQueues);
+      if (
+        connection.state === HubConnectionState.Connected ||
+        connection.state === HubConnectionState.Reconnecting
+      ) {
+        void connection.stop().catch(() => undefined);
+      }
+    };
+  }, [canAccessPutAway, queryClient]);
 
   return (
     <>
@@ -526,8 +657,7 @@ export default function PutAwayLabels() {
                         <td className="p-3">
                           {(() => {
                             const suggestion = getSuggestedBinLocation(
-                              shipment.size,
-                              shipment.qty,
+                              shipment,
                             );
                             return (
                               <span
@@ -605,14 +735,14 @@ export default function PutAwayLabels() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {getAvailableSlots(assignTarget.size).length === 0 ? (
+                  {getAvailableSlots(assignTarget).length === 0 ? (
                     <tr>
                       <td colSpan={4} className="p-4 text-sm text-slate-500">
                         No available slots for size {assignTarget.size}.
                       </td>
                     </tr>
                   ) : (
-                    getAvailableSlots(assignTarget.size).map((slot) => (
+                    getAvailableSlots(assignTarget).map((slot) => (
                       <tr key={slot.binId} className="even:bg-slate-50/50">
                         <td className="p-3">
                           <input
@@ -651,14 +781,12 @@ export default function PutAwayLabels() {
                 onClick={() =>
                   assignMutation.mutate({
                     shipmentId: assignTarget.id,
-                    payload: {
-                      supplier: assignTarget.supplier,
-                      productName: assignTarget.product,
-                      sku: assignTarget.sku,
-                      size: assignTarget.size,
-                      quantity: assignTarget.qty,
-                      selectedBinId: selectedBinId || undefined,
-                    },
+                    supplier: assignTarget.supplier,
+                    productName: assignTarget.product,
+                    sku: assignTarget.sku,
+                    size: assignTarget.size,
+                    quantity: assignTarget.qty,
+                    selectedBinId: selectedBinId || undefined,
                   })
                 }
                 disabled={assignMutation.isPending || !selectedBinId}
@@ -690,9 +818,16 @@ export default function PutAwayLabels() {
             </div>
             <div className="p-6 space-y-3">
               <div
-                id="putaway-qr-reader"
-                className={`w-full rounded-lg overflow-hidden border border-slate-200 ${isCameraScanning ? "block" : "hidden"}`}
+                id="putaway-item-qr-reader"
+                className={`w-full min-h-[260px] rounded-lg overflow-hidden border border-slate-200 ${
+                  cameraMode === "item" ? "block" : "hidden"
+                }`}
               />
+              {cameraMode === "item" && !isCameraScanning && !cameraError && (
+                <p className="text-xs text-slate-500">
+                  {isStartingCamera ? "Starting camera..." : "Tap 'Use Camera Scanner' to open preview."}
+                </p>
+              )}
               {cameraError && <p className="text-xs text-red-500">{cameraError}</p>}
               <input
                 type="text"
@@ -756,9 +891,16 @@ export default function PutAwayLabels() {
             </div>
             <div className="p-6 space-y-3">
               <div
-                id="putaway-qr-reader"
-                className={`w-full rounded-lg overflow-hidden border border-slate-200 ${isCameraScanning ? "block" : "hidden"}`}
+                id="putaway-bin-qr-reader"
+                className={`w-full min-h-[260px] rounded-lg overflow-hidden border border-slate-200 ${
+                  cameraMode === "bin" ? "block" : "hidden"
+                }`}
               />
+              {cameraMode === "bin" && !isCameraScanning && !cameraError && (
+                <p className="text-xs text-slate-500">
+                  {isStartingCamera ? "Starting camera..." : "Tap 'Use Camera Scanner' to open preview."}
+                </p>
+              )}
               {cameraError && <p className="text-xs text-red-500">{cameraError}</p>}
               <input
                 type="text"

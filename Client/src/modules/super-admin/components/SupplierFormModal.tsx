@@ -115,14 +115,14 @@ export default function SupplierFormModal() {
         onClick={handleClose}
       ></div>
 
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden mx-4">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+      <div className="relative w-full max-w-lg bg-white dark:bg-[#071733] border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden mx-4">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-[#0b1d3b]">
           <div>
-            <h3 className="text-lg font-bold text-[#001F3F]">
+            <h3 className="text-lg font-bold text-[#001F3F] dark:text-slate-100">
               {isEditMode ? "Edit Supplier" : "Register New Supplier"}
             </h3>
             {isEditMode && (
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-400 dark:text-slate-300 mt-0.5">
                 SUP-{String(editingSupplier!.id).padStart(3, "0")} &middot;
                 Registered {editingSupplier!.createdAt}
               </p>
@@ -130,7 +130,7 @@ export default function SupplierFormModal() {
           </div>
           <button
             onClick={handleClose}
-            className="text-slate-400 hover:text-red-500 transition-colors"
+            className="text-slate-400 dark:text-slate-300 hover:text-red-500 transition-colors"
           >
             <X className="size-5" />
           </button>
@@ -138,60 +138,60 @@ export default function SupplierFormModal() {
 
         <div className="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase mb-1 block">
               Company Name
             </label>
             <input
               type="text"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
-              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
+              className="w-full p-3 border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] dark:focus:ring-blue-400 focus:border-[#001F3F] dark:focus:border-blue-400 outline-none transition-all"
               placeholder="e.g. Nike Global"
             />
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase mb-1 block">
               Company Address
             </label>
             <input
               type="text"
               value={companyAddress}
               onChange={(e) => setCompanyAddress(e.target.value)}
-              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
+              className="w-full p-3 border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] dark:focus:ring-blue-400 focus:border-[#001F3F] dark:focus:border-blue-400 outline-none transition-all"
               placeholder="e.g. Nike HQ, Beaverton, Oregon"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase mb-1 block">
                 Contact Person
               </label>
               <input
                 type="text"
                 value={contactPerson}
                 onChange={(e) => setContactPerson(e.target.value)}
-                className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
+                className="w-full p-3 border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] dark:focus:ring-blue-400 focus:border-[#001F3F] dark:focus:border-blue-400 outline-none transition-all"
                 placeholder="e.g. Sarah Connors"
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase mb-1 block">
                 Email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] focus:border-[#001F3F] outline-none transition-all"
+                className="w-full p-3 border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] dark:focus:ring-blue-400 focus:border-[#001F3F] dark:focus:border-blue-400 outline-none transition-all"
                 placeholder="e.g. supply@nike.com"
               />
             </div>
           </div>
 
           <div>
-            <label className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 has-[:checked]:border-[#001F3F] has-[:checked]:bg-blue-50/50 transition-all">
+            <label className="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 has-[:checked]:border-[#001F3F] dark:has-[:checked]:border-blue-400 has-[:checked]:bg-blue-50/50 dark:has-[:checked]:bg-blue-500/10 transition-all">
               <input
                 type="checkbox"
                 checked={agreement}
@@ -199,10 +199,10 @@ export default function SupplierFormModal() {
                 className="accent-[#001F3F] w-4 h-4"
               />
               <div>
-                <span className="block text-sm font-bold text-[#001F3F]">
+                <span className="block text-sm font-bold text-[#001F3F] dark:text-slate-100">
                   Terms & Agreement
                 </span>
-                <span className="block text-xs text-slate-400">
+                <span className="block text-xs text-slate-400 dark:text-slate-300">
                   Supplier has signed the partnership agreement and complied
                   with all terms.
                 </span>
@@ -211,10 +211,10 @@ export default function SupplierFormModal() {
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+        <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-[#0b1d3b] flex justify-end gap-3">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-xs font-bold text-slate-500 uppercase hover:text-slate-700 transition-colors"
+            className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-300 uppercase hover:text-slate-700 dark:hover:text-slate-100 transition-colors"
           >
             Cancel
           </button>

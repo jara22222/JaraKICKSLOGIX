@@ -2,7 +2,10 @@ import { useInboundStore } from "@/modules/inbound/store/UseInboundStore";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { getBinLocations } from "@/modules/bin-management/services/binLocation";
-import { registerReceivedProduct } from "@/modules/inbound/services/receiverWorkflow";
+import {
+  getAssignedItems,
+  registerReceivedProduct,
+} from "@/modules/inbound/services/receiverWorkflow";
 import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import {
   PackageCheck,
@@ -12,7 +15,7 @@ import {
   ArrowRight,
   AlertTriangle,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function AcceptShipmentModal() {
   const { acceptTarget, setAcceptTarget, acceptShipment } = useInboundStore();
@@ -27,7 +30,7 @@ export default function AcceptShipmentModal() {
     }
   }, []);
   const canFetchBins = userRoles.some(
-    (role) => role === "BranchManager" || role === "SuperAdmin",
+    (role) => role === "BranchManager" || role === "SuperAdmin" || role === "Receiver",
   );
 
   const { data: bins = [] } = useQuery({
@@ -36,38 +39,87 @@ export default function AcceptShipmentModal() {
     enabled: Boolean(acceptTarget) && canFetchBins,
     retry: false,
   });
+  const { data: assignedItems = [] } = useQuery({
+    queryKey: ["receiver-assigned-items"],
+    queryFn: getAssignedItems,
+    enabled: Boolean(acceptTarget),
+    retry: false,
+  });
 
-  // Auto-find the best available bin
-  const suggestedBin = useMemo(() => {
+  const availableBins = useMemo(() => {
     if (!acceptTarget) return null;
+    const requiredUnits = Math.max(acceptTarget.qty, 0);
+    const normalize = (value: string) => value.trim().toUpperCase();
+    const itemsByBin = assignedItems.reduce<Map<string, typeof assignedItems>>((map, item) => {
+      const key = item.binId?.trim();
+      if (!key) return map;
+      const current = map.get(key) ?? [];
+      current.push(item);
+      map.set(key, current);
+      return map;
+    }, new Map());
+    const targetSku = normalize(acceptTarget.sku);
+    const targetProductName = normalize(acceptTarget.product);
+    const targetSize = normalize(acceptTarget.size);
 
-    // Pick available bins with matching size and enough capacity.
-    const available = bins
+    // Suggest all available bins with matching size and usable capacity.
+    const allAvailable = bins
       .filter(
-        (bin) =>
-          bin.binStatus === "Available" &&
+        (bin) => {
+          const binItems = itemsByBin.get(bin.binId) ?? [];
+          const isCompatible =
+            binItems.length === 0 ||
+            binItems.every(
+              (item) =>
+                normalize(item.sku) === targetSku &&
+                normalize(item.productName) === targetProductName &&
+                normalize(item.size) === targetSize,
+            );
+
+          return (
+          bin.binStatus !== "Archived" &&
           bin.binSize === acceptTarget.size &&
-          acceptTarget.qty <= bin.binCapacity
+          Math.max((bin.binCapacity ?? 0) - (bin.occupiedQty ?? 0), 0) > 0 &&
+          isCompatible
+          );
+        },
       )
-      .sort((a, b) => b.binCapacity - a.binCapacity);
+      .sort((a, b) => {
+        const aRemaining = Math.max((a.binCapacity ?? 0) - (a.occupiedQty ?? 0), 0);
+        const bRemaining = Math.max((b.binCapacity ?? 0) - (b.occupiedQty ?? 0), 0);
+        const aFits = aRemaining >= requiredUnits ? 1 : 0;
+        const bFits = bRemaining >= requiredUnits ? 1 : 0;
+        if (aFits !== bFits) return bFits - aFits;
+        return bRemaining - aRemaining;
+      });
 
-    if (available.length > 0) return available[0];
+    return allAvailable;
+  }, [acceptTarget, bins, assignedItems]);
 
-    // If no bin has enough capacity for full qty, find any with partial space
-    const partialAvailable = bins
-      .filter(
-        (bin) => bin.binStatus === "Available" && bin.binSize === acceptTarget.size,
-      )
-      .sort((a, b) => b.binCapacity - a.binCapacity);
+  const [selectedBinId, setSelectedBinId] = useState<string>("");
 
-    return partialAvailable.length > 0 ? partialAvailable[0] : null;
-  }, [acceptTarget, bins]);
+  useEffect(() => {
+    if (!availableBins || availableBins.length === 0) {
+      setSelectedBinId("");
+      return;
+    }
+    setSelectedBinId((current) =>
+      current && availableBins.some((bin) => bin.binId === current) ? current : availableBins[0].binId,
+    );
+  }, [availableBins]);
+
+  const suggestedBin = useMemo(
+    () => availableBins?.find((bin) => bin.binId === selectedBinId) ?? null,
+    [availableBins, selectedBinId],
+  );
 
   if (!acceptTarget) return null;
 
-  const isOverflow = suggestedBin
-    ? acceptTarget.qty > suggestedBin.binCapacity
-    : true;
+  const requiredUnits = Math.max(acceptTarget.qty, 0);
+  const suggestedRemainingSlots = suggestedBin
+    ? Math.max((suggestedBin.binCapacity ?? 0) - (suggestedBin.occupiedQty ?? 0), 0)
+    : 0;
+  const isOverflow = suggestedBin ? requiredUnits > suggestedRemainingSlots : true;
 
   const registerMutation = useMutation({
     mutationFn: registerReceivedProduct,
@@ -87,11 +139,13 @@ export default function AcceptShipmentModal() {
 
   const handleAccept = () => {
     registerMutation.mutate({
+      shipmentId: acceptTarget.id,
       supplier: acceptTarget.supplier,
       productName: acceptTarget.product,
       sku: acceptTarget.sku,
       size: acceptTarget.size,
       quantity: acceptTarget.qty,
+      selectedBinId: suggestedBin?.binId,
     });
   };
 
@@ -178,55 +232,97 @@ export default function AcceptShipmentModal() {
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
               <Warehouse className="size-4" />
-              System Auto-Assigned Bin
+              Suggested Available Bins
             </p>
-            {suggestedBin ? (
-              <div
-                className={`p-4 rounded-xl border-2 ${
-                  isOverflow
-                    ? "bg-amber-50 border-amber-300"
-                    : "bg-emerald-50 border-emerald-300"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        isOverflow
-                          ? "bg-amber-100 text-amber-600"
-                          : "bg-emerald-100 text-emerald-600"
-                      }`}
-                    >
-                      <MapPin className="size-5" />
-                    </div>
-                    <div>
-                      <p className="font-mono text-lg font-black text-[#001F3F]">
-                        {suggestedBin.binLocation}
-                      </p>
-                      <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                        {suggestedBin.binSize}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500">
-                        0/{suggestedBin.binCapacity}
-                      </span>
-                      <ArrowRight className="size-3 text-slate-400" />
-                      <span className="text-xs font-bold text-[#001F3F]">
-                        {acceptTarget.qty}/{suggestedBin.binCapacity}
-                      </span>
-                    </div>
-                    <div className="w-24 h-2 bg-white rounded-full overflow-hidden mt-1">
-                      <div
-                        className={`h-full rounded-full ${
-                          isOverflow ? "bg-amber-500" : "bg-emerald-500"
+            {suggestedBin && availableBins && availableBins.length > 0 ? (
+              <div className="space-y-3">
+                <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 space-y-2">
+                  {availableBins.map((bin) => {
+                    const remaining = Math.max((bin.binCapacity ?? 0) - (bin.occupiedQty ?? 0), 0);
+                    const fits = remaining >= requiredUnits;
+                    const isActive = selectedBinId === bin.binId;
+                    return (
+                      <button
+                        key={bin.binId}
+                        type="button"
+                        onClick={() => setSelectedBinId(bin.binId)}
+                        className={`w-full text-left p-3 rounded-lg border transition ${
+                          isActive
+                            ? "border-[#001F3F] bg-blue-50"
+                            : "border-slate-200 hover:border-slate-300 bg-white"
                         }`}
-                        style={{
-                          width: `${Math.min((acceptTarget.qty / suggestedBin.binCapacity) * 100, 100)}%`,
-                        }}
-                      ></div>
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="size-4 text-slate-500" />
+                            <span className="font-mono font-bold text-[#001F3F]">{bin.binLocation}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">
+                              {bin.binSize}
+                            </span>
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                              fits ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            {fits ? "Full fit" : "Partial fit"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          Units: {bin.occupiedQty}/{bin.binCapacity} (remaining {remaining})
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div
+                  className={`p-4 rounded-xl border-2 ${
+                    isOverflow ? "bg-amber-50 border-amber-300" : "bg-emerald-50 border-emerald-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          isOverflow ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"
+                        }`}
+                      >
+                        <MapPin className="size-5" />
+                      </div>
+                      <div>
+                        <p className="font-mono text-lg font-black text-[#001F3F]">{suggestedBin.binLocation}</p>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                          {suggestedBin.binSize}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500">
+                          {suggestedBin.occupiedQty}/{suggestedBin.binCapacity}
+                        </span>
+                        <ArrowRight className="size-3 text-slate-400" />
+                        <span className="text-xs font-bold text-[#001F3F]">
+                          {Math.min(
+                            (suggestedBin.occupiedQty ?? 0) + requiredUnits,
+                            suggestedBin.binCapacity,
+                          )}
+                          /{suggestedBin.binCapacity}
+                        </span>
+                      </div>
+                      <div className="w-24 h-2 bg-white rounded-full overflow-hidden mt-1">
+                        <div
+                          className={`h-full rounded-full ${isOverflow ? "bg-amber-500" : "bg-emerald-500"}`}
+                          style={{
+                            width: `${Math.min(
+                              (((suggestedBin.occupiedQty ?? 0) + requiredUnits) /
+                                suggestedBin.binCapacity) *
+                                100,
+                              100,
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -251,9 +347,8 @@ export default function AcceptShipmentModal() {
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
               <AlertTriangle className="size-4 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-700 leading-relaxed">
-                <strong>Partial fit:</strong> The selected bin does not have
-                enough capacity for all {acceptTarget.qty} units in size {acceptTarget.size}. Overflow items
-                may need to be split across multiple bins.
+                <strong>Partial fit:</strong> The selected bin does not have enough unit capacity for{" "}
+                {acceptTarget.qty} units (requires {requiredUnits} units).
               </p>
             </div>
           )}
@@ -269,7 +364,7 @@ export default function AcceptShipmentModal() {
           </button>
           <button
             onClick={handleAccept}
-            disabled={registerMutation.isPending}
+            disabled={registerMutation.isPending || !suggestedBin}
             className="px-6 py-2 bg-emerald-600 text-white text-xs font-bold uppercase rounded-lg hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2"
           >
             <PackageCheck className="size-3.5" />

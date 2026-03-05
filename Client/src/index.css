@@ -33,24 +33,24 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --background: 220 28% 14%;
+    --foreground: 210 20% 95%;
+    --card: 220 24% 18%;
+    --card-foreground: 210 20% 95%;
+    --popover: 220 24% 18%;
+    --popover-foreground: 210 20% 95%;
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --secondary: 220 20% 24%;
+    --secondary-foreground: 210 20% 95%;
+    --muted: 220 20% 24%;
+    --muted-foreground: 215 16% 75%;
+    --accent: 220 20% 24%;
+    --accent-foreground: 210 20% 95%;
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 18% 28%;
+    --input: 220 18% 28%;
     --ring: 212.7 26.8% 83.9%;
   }
 }
@@ -63,4 +63,112 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+}
+
+/* Global dark-mode polish so screens look consistent. */
+.dark body {
+  background-color: #0b1324;
+  color: #e5edf7;
+}
+
+.dark .bg-white,
+.dark .bg-white\/90,
+.dark .bg-white\/95,
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/80 {
+  background-color: #0f1c33 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1a2a44 !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: #243654 !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300 {
+  border-color: #22314d !important;
+}
+
+.dark .text-slate-400 {
+  color: #c7d3e6 !important;
+}
+
+.dark .text-slate-500,
+.dark .text-slate-600 {
+  color: #d7e1ef !important;
+}
+
+.dark .text-slate-700,
+.dark .text-slate-800 {
+  color: #eaf1fb !important;
+}
+
+.dark .text-slate-300 {
+  color: #dde6f5 !important;
+}
+
+.dark .text-white\/30,
+.dark .text-white\/40,
+.dark .text-white\/50 {
+  color: rgba(232, 240, 252, 0.85) !important;
+}
+
+/* Many components still use a hardcoded brand dark text token. */
+.dark [class*="text-[#001F3F]"] {
+  color: #eaf1fb !important;
+}
+
+/* Fix date-picker readability in dark mode */
+.dark input[type="date"] {
+  color: #eaf1fb !important;
+  background-color: transparent !important;
+}
+
+.dark input[type="date"]::-webkit-datetime-edit,
+.dark input[type="date"]::-webkit-datetime-edit-text,
+.dark input[type="date"]::-webkit-datetime-edit-month-field,
+.dark input[type="date"]::-webkit-datetime-edit-day-field,
+.dark input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #eaf1fb !important;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.4);
+  opacity: 0.95;
+}
+
+/* Table slate-pill contrast fix */
+.dark table .bg-slate-50,
+.dark table .bg-slate-100,
+.dark table .bg-slate-200 {
+  background-color: #243a5c !important;
+}
+
+.dark table .bg-slate-50,
+.dark table .bg-slate-100,
+.dark table .bg-slate-200,
+.dark table .text-slate-400,
+.dark table .text-slate-500,
+.dark table .text-slate-600 {
+  color: #eaf1fb !important;
+}
+
+.dark table .border-slate-100,
+.dark table .border-slate-200 {
+  border-color: #36507a !important;
+}
+
+/* Dark mode table action hover accent */
+.dark table td button:hover,
+.dark table td a:hover {
+  color: #ffd700 !important;
+}
+
+.dark table td button:hover {
+  background-color: rgba(255, 215, 0, 0.08) !important;
 }

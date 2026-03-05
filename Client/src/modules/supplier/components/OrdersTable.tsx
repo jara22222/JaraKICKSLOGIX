@@ -101,7 +101,7 @@ export default function OrdersTable() {
                   className="even:bg-slate-50/50 hover:bg-blue-50/30"
                 >
                   <td className="p-3">
-                    <span className="font-mono text-xs font-bold text-[#001F3F] bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                    <span className="font-mono text-xs font-bold text-[#001F3F] bg-blue-50 px-2 py-1 rounded border border-blue-100 dark:bg-[#243a5c] dark:border-[#36507a] dark:text-slate-100">
                       {order.id}
                     </span>
                   </td>
@@ -128,7 +128,7 @@ export default function OrdersTable() {
                   </td>
                   <td className="p-3">
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${getInboundStatusBadgeClass(
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold cursor-default select-none ${getInboundStatusBadgeClass(
                         order.status,
                       )}`}
                     >
@@ -254,7 +254,7 @@ export default function OrdersTable() {
                     </span>
                   </div>
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${getInboundStatusBadgeClass(
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold cursor-default select-none ${getInboundStatusBadgeClass(
                       viewTarget.status,
                     )}`}
                   >

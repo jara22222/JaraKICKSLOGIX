@@ -1,12 +1,23 @@
-import { Bell, CheckCheck, ChevronRight, Circle, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  ChevronRight,
+  Circle,
+  LogOut,
+  Settings,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 import SuperAdminMobileSidebar from "@/shared/layout/SuperAdminMobileSidebar";
 import { Link, useLocation } from "react-router-dom";
 import { HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/signalr";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getHubUrl } from "@/shared/config/api";
+import { UseAuth } from "@/shared/security/UseAuth";
+import ThemeToggleButton from "@/shared/theme/ThemeToggleButton";
 
 const BREADCRUMB_LABELS: Record<string, string> = {
-  superadmin: "God View",
+  superadmin: "Overview",
   settings: "Settings",
   profile: "Account Settings",
   managers: "Branch Managers",
@@ -34,9 +45,12 @@ export default function SuperAdminHeader({
   label: string;
 }) {
   const location = useLocation();
+  const { user, logout } = UseAuth();
   const segments = location.pathname.split("/").filter(Boolean);
   const menuRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const notificationStorageKey = useMemo(() => {
     try {
@@ -85,6 +99,9 @@ export default function SuperAdminHeader({
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -93,6 +110,9 @@ export default function SuperAdminHeader({
 
   useEffect(() => {
     const token = localStorage.getItem("token") ?? "";
+    if (!token) {
+      return;
+    }
     let isDisposed = false;
 
     const addNotification = (message: string) => {
@@ -109,6 +129,15 @@ export default function SuperAdminHeader({
         return next.slice(0, MAX_NOTIFICATIONS);
       });
     };
+    const pickValue = (payload: any, keys: string[], fallback: string) => {
+      for (const key of keys) {
+        const value = payload?.[key];
+        if (value !== undefined && value !== null && String(value).trim() !== "") {
+          return String(value);
+        }
+      }
+      return fallback;
+    };
 
     const createConnection = (hubPath: string) =>
       new HubConnectionBuilder()
@@ -117,13 +146,15 @@ export default function SuperAdminHeader({
           withCredentials: false,
         })
         .withAutomaticReconnect()
-        .configureLogging(LogLevel.Warning)
+        // Keep SignalR internal negotiation noise out of console.
+        .configureLogging(LogLevel.None)
         .build();
 
     const supplierConnection = createConnection("supplierHub");
     const managerConnection = createConnection("managerHub");
     const updateManagerConnection = createConnection("update-managerHub");
     const archiveManagerConnection = createConnection("archive-managerHub");
+    const branchAccountConnection = createConnection("branchAccount-managerHub");
 
     supplierConnection.on("SupplierCreated", (payload: any) => {
       addNotification(`New supplier added: ${payload?.companyName ?? "Unknown"}`);
@@ -135,33 +166,56 @@ export default function SuperAdminHeader({
       addNotification(`Supplier archived: ${payload?.companyName ?? "Unknown"}`);
     });
     managerConnection.on("ManagerCreated", (payload: any) => {
+      const branch = pickValue(payload, ["branch", "Branch"], "N/A");
+      const userName = pickValue(payload, ["userName", "UserName", "username", "email", "Email"], "Unknown");
       addNotification(
-        `Manager created (${payload?.branch ?? "N/A"}): ${payload?.userName ?? "Unknown"}`,
+        `Manager created (${branch}): ${userName}`,
       );
     });
     updateManagerConnection.on("ManagerUpdated", (payload: any) => {
+      const branch = pickValue(payload, ["branch", "Branch"], "N/A");
+      const userName = pickValue(payload, ["userName", "UserName", "username", "email", "Email"], "Unknown");
       addNotification(
-        `Manager updated (${payload?.branch ?? "N/A"}): ${payload?.userName ?? "Unknown"}`,
+        `Manager updated (${branch}): ${userName}`,
       );
     });
     archiveManagerConnection.on("ManagerArchived", (payload: any) => {
+      const branch = pickValue(payload, ["branch", "Branch"], "N/A");
+      const userName = pickValue(payload, ["userName", "UserName", "username", "email", "Email"], "Unknown");
       addNotification(
-        `Manager archived (${payload?.branch ?? "N/A"}): ${payload?.userName ?? "Unknown"}`,
+        `Manager archived (${branch}): ${userName}`,
       );
     });
     archiveManagerConnection.on("ManagerRestored", (payload: any) => {
+      const branch = pickValue(payload, ["branch", "Branch"], "N/A");
+      const userName = pickValue(payload, ["userName", "UserName", "username", "email", "Email"], "Unknown");
       addNotification(
-        `Manager restored (${payload?.branch ?? "N/A"}): ${payload?.userName ?? "Unknown"}`,
+        `Manager restored (${branch}): ${userName}`,
+      );
+    });
+    branchAccountConnection.on("PasswordResetRequested", (payload: any) => {
+      const branch = pickValue(payload, ["branch", "Branch"], "N/A");
+      const userEmail = pickValue(payload, ["userEmail", "UserEmail", "email", "Email"], "Unknown user");
+      addNotification(
+        `Password reset request (${branch}): ${userEmail}`,
       );
     });
 
     const startConnection = async (connection: any) => {
+      if (isDisposed) {
+        return;
+      }
       try {
         await connection.start();
       } catch (error) {
         if (isDisposed) return;
         const message = error instanceof Error ? error.message : "";
-        if (message.includes("stopped during negotiation")) return;
+        if (
+          message.toLowerCase().includes("stopped during negotiation") ||
+          message.toLowerCase().includes("aborted")
+        ) {
+          return;
+        }
       }
     };
 
@@ -169,6 +223,7 @@ export default function SuperAdminHeader({
     void startConnection(managerConnection);
     void startConnection(updateManagerConnection);
     void startConnection(archiveManagerConnection);
+    void startConnection(branchAccountConnection);
 
     return () => {
       isDisposed = true;
@@ -180,9 +235,13 @@ export default function SuperAdminHeader({
       updateManagerConnection.off("ManagerUpdated");
       archiveManagerConnection.off("ManagerArchived");
       archiveManagerConnection.off("ManagerRestored");
+      branchAccountConnection.off("PasswordResetRequested");
 
       const stopConnection = (connection: any) => {
-        if (connection.state !== HubConnectionState.Disconnected) {
+        if (
+          connection.state === HubConnectionState.Connected ||
+          connection.state === HubConnectionState.Reconnecting
+        ) {
           void connection.stop().catch(() => undefined);
         }
       };
@@ -191,6 +250,7 @@ export default function SuperAdminHeader({
       stopConnection(managerConnection);
       stopConnection(updateManagerConnection);
       stopConnection(archiveManagerConnection);
+      stopConnection(branchAccountConnection);
     };
   }, []);
 
@@ -219,6 +279,17 @@ export default function SuperAdminHeader({
   const markAllRead = () => {
     setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })));
   };
+
+  const displayName =
+    `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Super Admin";
+  const displayRole = user?.roles?.[0] ?? "SuperAdmin";
+  const displayBranch = useMemo(() => {
+    const branchFromUser = (user as any)?.branch ?? (user as any)?.Branch;
+    if (branchFromUser && String(branchFromUser).trim()) {
+      return String(branchFromUser).trim();
+    }
+    return "All Branches";
+  }, [user]);
 
   return (
     <>
@@ -252,9 +323,60 @@ export default function SuperAdminHeader({
           <span className="text-[10px] text-slate-400 hidden lg:block ml-2 font-medium">
             — {label}
           </span>
+          <span className="hidden lg:inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+            Branch: {displayBranch}
+          </span>
         </div>
 
-        <div className="hidden sm:flex items-center gap-3 relative" ref={menuRef}>
+        <div className="hidden sm:flex items-center gap-3 relative">
+          <div className="relative" ref={profileRef}>
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen((prev) => !prev)}
+              className="hidden lg:flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0f1c33] px-2.5 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/70 transition-colors"
+            >
+              <div className="flex size-7 items-center justify-center rounded-full bg-[#001F3F] text-xs font-bold text-[#FFD700]">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div className="leading-tight text-left">
+                <p className="text-xs font-semibold text-[#001F3F] dark:text-slate-100">{displayName}</p>
+                <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-300">{displayRole}</p>
+              </div>
+              <ChevronRight
+                className={`size-4 text-slate-500 transition-transform duration-200 ${isProfileOpen ? "-rotate-90" : ""}`}
+              />
+            </button>
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#0f1c33] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                  <p className="text-xs font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
+                    Account
+                  </p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                    {user?.email || "user@kickslogix.com"}
+                  </p>
+                </div>
+                <div className="p-2">
+                  <Link
+                    to="/settings/profile"
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/70 rounded-lg transition-colors"
+                  >
+                    <Settings className="size-4" />
+                    Account Settings
+                  </Link>
+                  <ThemeToggleButton className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/70 rounded-lg transition-colors" />
+                  <button
+                    onClick={logout}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/20 rounded-lg transition-colors"
+                  >
+                    <LogOut className="size-4" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div ref={menuRef}>
           {isOpen && (
             <div className="absolute right-0 top-10 w-80 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
               <div className="p-3 border-b border-slate-100 space-y-2">
@@ -365,6 +487,7 @@ export default function SuperAdminHeader({
               </span>
             )}
           </button>
+          </div>
         </div>
       </header>
     </>

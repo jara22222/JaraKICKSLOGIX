@@ -127,7 +127,7 @@ export default function AuditLogTable({
                 </td>
                 <td className="p-3">
                   <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${ACTION_STYLES[normalizeAction(log.action)] || "bg-slate-50 text-slate-600 border-slate-200"}`}
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border cursor-default select-none ${ACTION_STYLES[normalizeAction(log.action)] || "bg-slate-50 text-slate-600 border-slate-200"}`}
                   >
                     {getActionLabel(log.action)}
                   </span>
@@ -139,7 +139,7 @@ export default function AuditLogTable({
                 </td>
                 <td className="p-3">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border cursor-default select-none ${
                       log.branch === "Super Admin"
                         ? "bg-blue-50 text-blue-700 border-blue-200"
                         : "bg-slate-50 text-slate-600 border-slate-200"

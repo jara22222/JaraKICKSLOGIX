@@ -1,8 +1,8 @@
 export const formatInboundStatus = (status: string): string => {
   const normalized = status.replace(/[_-]+/g, "").toUpperCase();
   const knownStatuses: Record<string, string> = {
-    PENDINGPUTAWAY: "Pending Put-away",
-    CLAIMEDFORPUTAWAY: "Claimed for Put-away",
+    PENDINGPUTAWAY: "Queued for Put-away",
+    CLAIMEDFORPUTAWAY: "Assigned for Put-away",
     ITEMSCANNED: "Item Scanned",
     STORED: "Stored",
     INTRANSIT: "In Transit",

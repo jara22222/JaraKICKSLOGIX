@@ -1,19 +1,21 @@
-import { useVASStore } from "@/modules/vas/store/UseVASStore";
+import { getVASActivityLog } from "@/modules/vas/services/vasWorkflow";
 import {
-  ChevronLeft,
   PackageOpen,
-  PackageCheck,
   CheckCircle2,
   Printer,
   Search,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 
-type FilterType = "all" | "Received" | "Processing" | "Completed" | "Printed";
+type FilterType = "all" | "VASScanOut" | "VASDone";
 
 export default function VASActivityLog() {
-  const { activityLog } = useVASStore();
+  const { data: activityLog = [] } = useQuery({
+    queryKey: ["vas-activity-log"],
+    queryFn: getVASActivityLog,
+    retry: false,
+  });
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
 
@@ -27,19 +29,13 @@ export default function VASActivityLog() {
   });
 
   const actionIcon = (action: string) => {
-    if (action === "Received")
+    if (action === "VASScanOut")
       return (
         <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
           <PackageOpen className="size-4 text-blue-600" />
         </div>
       );
-    if (action === "Processing")
-      return (
-        <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
-          <PackageCheck className="size-4 text-violet-600" />
-        </div>
-      );
-    if (action === "Completed")
+    if (action === "VASDone")
       return (
         <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
           <CheckCircle2 className="size-4 text-emerald-600" />
@@ -53,9 +49,8 @@ export default function VASActivityLog() {
   };
 
   const actionBadgeColor = (action: string) => {
-    if (action === "Received") return "bg-blue-100 text-blue-700";
-    if (action === "Processing") return "bg-violet-100 text-violet-700";
-    if (action === "Completed") return "bg-emerald-100 text-emerald-700";
+    if (action === "VASScanOut") return "bg-blue-100 text-blue-700";
+    if (action === "VASDone") return "bg-emerald-100 text-emerald-700";
     return "bg-amber-100 text-amber-700";
   };
 
@@ -63,17 +58,10 @@ export default function VASActivityLog() {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-[#001F3F] text-white px-5 pt-12 pb-6 rounded-b-3xl shadow-xl">
-        <div className="flex items-center justify-between mb-4">
-          <Link
-            to="/vas"
-            className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center active:bg-white/20"
-          >
-            <ChevronLeft className="size-5" />
-          </Link>
+        <div className="flex items-center justify-center mb-4">
           <h1 className="text-base font-black uppercase tracking-tight">
             Activity Log
           </h1>
-          <div className="w-9" />
         </div>
         <p className="text-xs text-slate-300 text-center">
           Your VAS activity audit trail
@@ -98,10 +86,8 @@ export default function VASActivityLog() {
           {(
             [
               { key: "all", label: "All" },
-              { key: "Received", label: "Received" },
-              { key: "Processing", label: "Processing" },
-              { key: "Completed", label: "Completed" },
-              { key: "Printed", label: "Printed" },
+              { key: "VASScanOut", label: "Scanned Out" },
+              { key: "VASDone", label: "Completed" },
             ] as const
           ).map((tab) => (
             <button

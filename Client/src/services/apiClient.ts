@@ -44,7 +44,9 @@ apiClient.interceptors.response.use(
 
     const firstValidationError =
       validationErrors && typeof validationErrors === "object"
-        ? Object.values(validationErrors).flat().find((msg) => Boolean(msg))
+        ? Object.values(validationErrors)
+            .flat()
+            .find((msg) => Boolean(msg))
         : null;
 
     const firstIdentityError =
@@ -67,7 +69,7 @@ apiClient.interceptors.response.use(
       showErrorToast(String(message));
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

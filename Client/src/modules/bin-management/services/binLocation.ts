@@ -19,7 +19,6 @@ export interface BinLocationItemResponse {
 export interface CreateBinLocationPayload {
   binLocation: string;
   binSize: BinSize;
-  binCapacity: number;
 }
 
 export interface UpdateBinLocationPayload extends CreateBinLocationPayload {

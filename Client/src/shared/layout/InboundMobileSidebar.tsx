@@ -1,5 +1,6 @@
 import {
   Activity,
+  ChevronRight,
   Footprints,
   LayoutDashboard,
   LogOut,
@@ -13,10 +14,12 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { UseAuth } from "@/shared/security/UseAuth";
+import ThemeToggleButton from "../theme/ThemeToggleButton";
 
 export default function InboundMobileSidebar() {
   const { user, logout } = UseAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const userRoles: string[] = useMemo(() => {
     try {
       const rawUser = localStorage.getItem("user");
@@ -51,7 +54,10 @@ export default function InboundMobileSidebar() {
     return (
       <Link
         to={link.startsWith("/") ? link : `/inbound/${link}`}
-        onClick={() => setIsMobileOpen(false)}
+        onClick={() => {
+          setIsProfileOpen(false);
+          setIsMobileOpen(false);
+        }}
         className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all group ${
           isActive
             ? "bg-gradient-to-r from-[#FFD700]/15 to-transparent border-l-4 border-[#FFD700] text-white"
@@ -129,11 +135,19 @@ export default function InboundMobileSidebar() {
           {hasReceiverRole && (
             <NavItem icon={<PackageCheck className="size-5" />} label="Assigned" link="assigned" />
           )}
+
+          <div className="my-3 border-t border-white/10" />
+          <p className="px-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+            Monitoring
+          </p>
           <NavItem icon={<Activity className="size-5" />} label="Activity Log" link="activity" />
         </nav>
 
         <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group">
+          <div
+            onClick={() => setIsProfileOpen((prev) => !prev)}
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group"
+          >
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-400 to-emerald-600 border-2 border-emerald-300/30 flex items-center justify-center">
               <PackageCheck className="size-4 text-white" />
             </div>
@@ -145,22 +159,33 @@ export default function InboundMobileSidebar() {
                 {user?.roles?.[0] || "Inbound Coordinator"}
               </span>
             </div>
+            <ChevronRight
+              className={`ml-auto size-4 text-slate-400 transition-transform duration-200 ${isProfileOpen ? "-rotate-90 text-white" : ""}`}
+            />
           </div>
-          <Link
-            to="/inbound/accountsettings"
-            onClick={() => setIsMobileOpen(false)}
-            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-white/5 transition-colors"
-          >
-            <Settings className="size-4" />
-            Account Settings
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
-          >
-            <LogOut className="size-4" />
-            Sign Out
-          </button>
+          {isProfileOpen && (
+            <div className="mt-2 space-y-1 rounded-lg border border-white/10 bg-white/5 p-2">
+              <Link
+                to="/inbound/accountsettings"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  setIsMobileOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/10 transition-colors"
+              >
+                <Settings className="size-4" />
+                Account Settings
+              </Link>
+              <ThemeToggleButton className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/10 transition-colors" />
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"
+              >
+                <LogOut className="size-4" />
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>

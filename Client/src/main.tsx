@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"; // 1. 
 import { Toaster } from "sonner";
 import "./index.css";
 import { router } from "./router";
+import { ThemeProvider } from "./shared/theme/ThemeProvider";
 
 // 2. Create a client instance outside the component
 const queryClient = new QueryClient();
@@ -13,8 +14,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     {/* 3. Wrap the RouterProvider with the QueryClientProvider */}
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <Toaster richColors position="top-right" />
+      <ThemeProvider>
+        <RouterProvider router={router} />
+        <Toaster richColors position="top-right" />
+      </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 );

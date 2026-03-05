@@ -10,6 +10,7 @@ import {
   getPendingSupplierShipmentsForApproval,
 } from "@/modules/inbound/services/branchManagerInbound";
 import { getInboundReceipts } from "@/modules/inbound/services/inboundData";
+import { useInboundManagementRealtime } from "@/modules/inbound/hooks/useInboundManagementRealtime";
 import {
   formatInboundStatus,
   getInboundStatusBadgeClass,
@@ -25,15 +26,22 @@ import {
   MapPin,
 } from "lucide-react";
 import { useState } from "react";
+import ConfirmationModal from "@/shared/components/ConfirmationModal";
 
 /**
  * Admin/Manager read-only view of inbound data.
  * They can see incoming shipments but CANNOT accept or assign.
  */
 export default function InboundManagement() {
+  useInboundManagementRealtime();
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [approveTarget, setApproveTarget] = useState<{
+    id: string;
+    product: string;
+    supplier: string;
+  } | null>(null);
   const { data: incomingShipments = [] } = useQuery({
     queryKey: ["branch-manager-pending-supplier-shipments"],
     queryFn: getPendingSupplierShipmentsForApproval,
@@ -213,7 +221,7 @@ export default function InboundManagement() {
               <tbody className="divide-y divide-slate-100">
                 {paginatedData.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-4 text-sm text-slate-500">
+                    <td colSpan={7} className="p-4 text-sm text-slate-500 text-center">
                       No pending supplier shipments for approval.
                     </td>
                   </tr>
@@ -271,7 +279,7 @@ export default function InboundManagement() {
                     </td>
                     <td className="p-3">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${getInboundStatusBadgeClass(
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold cursor-default select-none ${getInboundStatusBadgeClass(
                           shipment.status,
                         )}`}
                       >
@@ -287,7 +295,13 @@ export default function InboundManagement() {
                     </td>
                     <td className="p-3 text-right">
                       <button
-                        onClick={() => approveMutation.mutate(shipment.id)}
+                        onClick={() =>
+                          setApproveTarget({
+                            id: shipment.id,
+                            product: shipment.product,
+                            supplier: shipment.supplier,
+                          })
+                        }
                         disabled={approveMutation.isPending}
                         className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg inline-flex items-center gap-1.5 disabled:opacity-60"
                       >
@@ -314,6 +328,29 @@ export default function InboundManagement() {
             />
           </div>
         </div>
+
+        <ConfirmationModal
+          isOpen={!!approveTarget}
+          onClose={() => setApproveTarget(null)}
+          onConfirm={() => {
+            if (!approveTarget || approveMutation.isPending) return;
+            approveMutation.mutate(approveTarget.id, {
+              onSuccess: () => setApproveTarget(null),
+            });
+          }}
+          title="Approve Shipment"
+          description="Confirm approval for this supplier shipment so it can proceed to receiver workflow."
+          confirmLabel={approveMutation.isPending ? "Approving..." : "Approve Shipment"}
+          confirmVariant="primary"
+          confirmIcon={<PackageCheck className="size-3.5" />}
+        >
+          {approveTarget && (
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <p className="text-sm font-bold text-[#001F3F]">{approveTarget.product}</p>
+              <p className="text-xs text-slate-500">Supplier: {approveTarget.supplier}</p>
+            </div>
+          )}
+        </ConfirmationModal>
       </div>
     </>
   );

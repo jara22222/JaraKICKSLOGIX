@@ -22,9 +22,15 @@ import {
   type BinLocationItemResponse,
   type BinSize,
 } from "@/modules/bin-management/services/binLocation";
+import { getHubUrl } from "@/shared/config/api";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import QRCode from "qrcode";
+import {
+  HubConnectionBuilder,
+  HubConnectionState,
+  LogLevel,
+} from "@microsoft/signalr";
 
 const CSV_PDF_HEADERS = [
   "Bin ID",
@@ -59,17 +65,17 @@ export default function BinsTable({
   );
   const [editLocation, setEditLocation] = useState("");
   const [editSize, setEditSize] = useState<BinSize>("M");
-  const [editCapacity, setEditCapacity] = useState(20);
   const [editStatus, setEditStatus] = useState<"Available" | "Occupied">(
     "Available",
   );
   const [archiveTarget, setArchiveTarget] =
     useState<BinLocationItemResponse | null>(null);
+  const [confirmCreateOpen, setConfirmCreateOpen] = useState(false);
+  const [confirmEditOpen, setConfirmEditOpen] = useState(false);
 
   const [newBin, setNewBin] = useState({
     binLocation: "",
     binSize: "M" as BinSize,
-    binCapacity: 20,
   });
 
   const { data: binsData = [], isLoading } = useQuery({
@@ -83,7 +89,7 @@ export default function BinsTable({
       showSuccessToast(data.message || "Bin location created successfully.");
       queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
       setIsAddModalOpen(false);
-      setNewBin({ binLocation: "", binSize: "M", binCapacity: 20 });
+      setNewBin({ binLocation: "", binSize: "M" });
     },
   });
 
@@ -96,7 +102,6 @@ export default function BinsTable({
       payload: {
         binLocation: string;
         binSize: BinSize;
-        binCapacity: number;
         binStatus: "Available" | "Occupied";
       };
     }) => updateBinLocation(id, payload),
@@ -141,6 +146,64 @@ export default function BinsTable({
   }, [searchQuery, sizeFilter, statusFilter]);
 
   useEffect(() => {
+    const token = localStorage.getItem("token") ?? "";
+    if (!token) return;
+
+    let isDisposed = false;
+    const connection = new HubConnectionBuilder()
+      .withUrl(getHubUrl("branch-notificationHub"), {
+        accessTokenFactory: () => token,
+        withCredentials: false,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.None)
+      .build();
+    const retryTimers = new Set<ReturnType<typeof setTimeout>>();
+
+    const refreshBins = () => {
+      void queryClient.invalidateQueries({ queryKey: ["branchmanager-bins"] });
+      void queryClient.invalidateQueries({ queryKey: ["branchmanager-archived-bins"] });
+    };
+
+    connection.on("PutAwayTaskUpdated", refreshBins);
+    connection.on("InboundQueueUpdated", refreshBins);
+    connection.on("InboundShipmentApproved", refreshBins);
+    connection.on("InboundShipmentSubmitted", refreshBins);
+
+    const startWithRetry = (delayMs = 1000) => {
+      if (isDisposed) return;
+      void connection.start().catch(() => {
+        if (isDisposed) return;
+        const nextDelay = Math.min(delayMs * 2, 10000);
+        const timer = setTimeout(() => {
+          retryTimers.delete(timer);
+          startWithRetry(nextDelay);
+        }, delayMs);
+        retryTimers.add(timer);
+      });
+    };
+    startWithRetry();
+
+    return () => {
+      isDisposed = true;
+      connection.off("PutAwayTaskUpdated", refreshBins);
+      connection.off("InboundQueueUpdated", refreshBins);
+      connection.off("InboundShipmentApproved", refreshBins);
+      connection.off("InboundShipmentSubmitted", refreshBins);
+      for (const timer of retryTimers) {
+        clearTimeout(timer);
+      }
+      retryTimers.clear();
+      if (
+        connection.state === HubConnectionState.Connected ||
+        connection.state === HubConnectionState.Reconnecting
+      ) {
+        void connection.stop().catch(() => undefined);
+      }
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
     if (!qrModalData) {
       setQrImageDataUrl("");
       return;
@@ -182,7 +245,6 @@ export default function BinsTable({
     setEditTarget(bin);
     setEditLocation(bin.binLocation);
     setEditSize((bin.binSize as BinSize) || "M");
-    setEditCapacity(bin.binCapacity);
     setEditStatus(bin.binStatus === "Occupied" ? "Occupied" : "Available");
   };
 
@@ -193,11 +255,7 @@ export default function BinsTable({
       return;
     }
 
-    createMutation.mutate({
-      binLocation: newBin.binLocation.trim().toUpperCase(),
-      binSize: newBin.binSize,
-      binCapacity: newBin.binCapacity,
-    });
+    setConfirmCreateOpen(true);
   };
 
   const handleSaveEdit = () => {
@@ -207,15 +265,7 @@ export default function BinsTable({
       return;
     }
 
-    updateMutation.mutate({
-      id: editTarget.binId,
-      payload: {
-        binLocation: editLocation.trim().toUpperCase(),
-        binSize: editSize,
-        binCapacity: editCapacity,
-        binStatus: editStatus,
-      },
-    });
+    setConfirmEditOpen(true);
   };
 
   const handleArchiveBin = () => {
@@ -240,13 +290,13 @@ export default function BinsTable({
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="p-4 text-sm text-slate-500">
+                  <td colSpan={5} className="p-4 text-sm text-slate-500 text-center">
                     Loading bin locations...
                   </td>
                 </tr>
               ) : displayedData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-4 text-sm text-slate-500">
+                  <td colSpan={5} className="p-4 text-sm text-slate-500 text-center">
                     No bin locations found.
                   </td>
                 </tr>
@@ -261,7 +311,7 @@ export default function BinsTable({
                         <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-[#001F3F]">
                           <MapPin size={18} />
                         </div>
-                        <span className="font-mono font-bold text-[#001F3F] text-sm bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                        <span className="font-mono font-bold text-[#001F3F] text-sm bg-blue-50 px-2 py-1 rounded border border-blue-100 dark:bg-[#243a5c] dark:border-[#36507a] dark:text-slate-100">
                           {bin.binLocation}
                         </span>
                       </div>
@@ -422,25 +472,6 @@ export default function BinsTable({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                  Capacity (Units)
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={newBin.binCapacity}
-                  onChange={(event) =>
-                    setNewBin({
-                      ...newBin,
-                      binCapacity: parseInt(event.target.value || "1", 10),
-                    })
-                  }
-                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none"
-                />
-              </div>
-
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"
@@ -530,19 +561,13 @@ export default function BinsTable({
                   <option value="Occupied">Occupied</option>
                 </select>
               </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
-                  Capacity (Units)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={editCapacity}
-                  onChange={(event) =>
-                    setEditCapacity(parseInt(event.target.value || "1", 10))
-                  }
-                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#001F3F] outline-none"
-                />
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  Capacity (Fixed by size)
+                </p>
+                <p className="text-sm font-semibold text-slate-700">
+                  Capacity will be auto-set by selected size.
+                </p>
               </div>
             </div>
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
@@ -577,18 +602,107 @@ export default function BinsTable({
         note="Archived bins retain historical logs and can be recreated later if needed."
       >
         {archiveTarget && (
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-lg bg-slate-200 flex items-center justify-center text-[#001F3F] shrink-0">
-              <MapPin size={20} />
+          <div className="space-y-3">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-lg bg-slate-200 flex items-center justify-center text-[#001F3F] shrink-0">
+                <MapPin size={20} />
+              </div>
+              <div className="min-w-0">
+                <p className="font-mono text-sm font-bold text-[#001F3F]">
+                  {archiveTarget.binLocation}
+                </p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  {archiveTarget.binSize} &middot; {archiveTarget.binCapacity} units
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="font-mono text-sm font-bold text-[#001F3F]">
-                {archiveTarget.binLocation}
+            <div
+              className={`p-3 rounded-xl border text-xs ${
+                archiveTarget.occupiedQty > 0
+                  ? "bg-amber-50 border-amber-200 text-amber-800"
+                  : "bg-emerald-50 border-emerald-200 text-emerald-800"
+              }`}
+            >
+              <p className="font-bold uppercase tracking-wide">
+                Archive check
               </p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {archiveTarget.binSize} &middot; {archiveTarget.binCapacity} units
+              <p className="mt-1">
+                Current occupancy:{" "}
+                <span className="font-semibold">
+                  {archiveTarget.occupiedQty}/{archiveTarget.binCapacity}
+                </span>
+                .
+              </p>
+              <p className="mt-1">
+                {archiveTarget.occupiedQty > 0
+                  ? "This bin is currently occupied and archive may be blocked until inventory is cleared."
+                  : "This bin appears empty and should be eligible for archiving if no active assignments remain."}
               </p>
             </div>
+          </div>
+        )}
+      </ConfirmationModal>
+
+      <ConfirmationModal
+        isOpen={confirmCreateOpen}
+        onClose={() => setConfirmCreateOpen(false)}
+        onConfirm={() => {
+          if (createMutation.isPending) return;
+          createMutation.mutate(
+            {
+              binLocation: newBin.binLocation.trim().toUpperCase(),
+              binSize: newBin.binSize,
+            },
+            { onSuccess: () => setConfirmCreateOpen(false) },
+          );
+        }}
+        title="Create Bin Location"
+        description="Confirm creating this new bin location."
+        confirmLabel={createMutation.isPending ? "Creating..." : "Create Bin"}
+        confirmVariant="primary"
+        confirmIcon={<Pencil className="size-3.5" />}
+      >
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <p className="text-sm font-bold text-[#001F3F]">
+            {newBin.binLocation.trim().toUpperCase() || "(No location)"}
+          </p>
+          <p className="text-xs text-slate-500">
+            Size {newBin.binSize} · Fixed capacity by size
+          </p>
+        </div>
+      </ConfirmationModal>
+
+      <ConfirmationModal
+        isOpen={confirmEditOpen}
+        onClose={() => setConfirmEditOpen(false)}
+        onConfirm={() => {
+          if (!editTarget || updateMutation.isPending) return;
+          updateMutation.mutate(
+            {
+              id: editTarget.binId,
+              payload: {
+                binLocation: editLocation.trim().toUpperCase(),
+                binSize: editSize,
+                binStatus: editStatus,
+              },
+            },
+            { onSuccess: () => setConfirmEditOpen(false) },
+          );
+        }}
+        title="Save Bin Changes"
+        description="Confirm saving updates for this bin location."
+        confirmLabel={updateMutation.isPending ? "Saving..." : "Save Changes"}
+        confirmVariant="primary"
+        confirmIcon={<Pencil className="size-3.5" />}
+      >
+        {editTarget && (
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <p className="text-sm font-bold text-[#001F3F]">
+              {editLocation.trim().toUpperCase()}
+            </p>
+            <p className="text-xs text-slate-500">
+              {editTarget.binId} · {editSize} · Fixed capacity by size · {editStatus}
+            </p>
           </div>
         )}
       </ConfirmationModal>

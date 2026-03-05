@@ -1,4 +1,5 @@
 import apiClient from "@/services/apiClient";
+import type { AxiosRequestConfig } from "axios";
 
 export interface PostmanagerResponse {
   message: string;
@@ -16,10 +17,14 @@ export interface ManagerCredentials {
 export const createManagerAccount = async (
   credentials: ManagerCredentials,
 ): Promise<PostmanagerResponse> => {
+  const requestConfig: AxiosRequestConfig & { suppressErrorToast?: boolean } = {
+    suppressErrorToast: true,
+  };
   // API returns a success message for manager creation
   const { data } = await apiClient.post<PostmanagerResponse>(
     "/api/ManagerAccount/register-manager",
     credentials,
+    requestConfig,
   );
   return data;
 };

@@ -1,8 +1,16 @@
 import { useState } from "react";
-import { Pencil, X } from "lucide-react";
+import { Archive, Pencil, X } from "lucide-react";
 import Pagination from "@/shared/components/Pagination";
 import ExportToolbar from "@/shared/components/ExportToolbar";
 import { exportToCSV, exportToPDF } from "@/shared/lib/exportUtils";
+import {
+  archiveBranchEmployee,
+  getBranchEmployees,
+  type BranchEmployee,
+} from "@/modules/access-control/services/branchEmployee";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
+import ConfirmationModal from "@/shared/components/ConfirmationModal";
 
 const CSV_PDF_HEADERS = [
   "Name",
@@ -14,7 +22,7 @@ const CSV_PDF_HEADERS = [
 ];
 
 type StaffMember = {
-  id: number;
+  id: string;
   initials: string;
   name: string;
   email: string;
@@ -28,9 +36,11 @@ type StaffMember = {
 };
 
 export default function AccessControlTable() {
+  const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [editTarget, setEditTarget] = useState<StaffMember | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<StaffMember | null>(null);
 
   // Edit form state
   const [editName, setEditName] = useState("");
@@ -39,47 +49,91 @@ export default function AccessControlTable() {
   const [editBranch, setEditBranch] = useState("");
   const [editStatus, setEditStatus] = useState("");
 
-  const staffMembers: StaffMember[] = [
-    {
-      id: 1,
-      initials: "MJ",
-      name: "Michael Jordan",
-      email: "emp_001@kickslogix.com",
-      role: "Warehouse Manager",
-      roleColor: "bg-blue-100 text-blue-700 border-blue-200",
-      icon: "fa-user-tie",
-      branch: "Davao Main Hub",
-      lastActive: "2 mins ago",
-      status: "Active",
-      statusColor: "bg-green-500",
+  const { data: employees = [] } = useQuery({
+    queryKey: ["branch-employees"],
+    queryFn: getBranchEmployees,
+    retry: false,
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: archiveBranchEmployee,
+    onSuccess: (data) => {
+      showSuccessToast(data.message || "Employee archived successfully.");
+      void queryClient.invalidateQueries({ queryKey: ["branch-employees"] });
+      void queryClient.invalidateQueries({ queryKey: ["branch-archived-employees"] });
     },
-    {
-      id: 2,
-      initials: "LB",
-      name: "LeBron James",
-      email: "inbound_lead@kickslogix.com",
-      role: "Inbound Coordinator",
-      roleColor: "bg-amber-100 text-amber-700 border-amber-200",
-      icon: "fa-dolly",
-      branch: "Davao Main Hub",
-      lastActive: "1 hour ago",
-      status: "Active",
-      statusColor: "bg-green-500",
+    onError: (error: any) => {
+      showErrorToast(error?.response?.data?.message || "Failed to archive employee.");
     },
-    {
-      id: 3,
-      initials: "KB",
-      name: "Kobe Bryant",
-      email: "dispatch_01@kickslogix.com",
-      role: "Dispatch Officer",
-      roleColor: "bg-purple-100 text-purple-700 border-purple-200",
-      icon: "fa-truck-ramp-box",
-      branch: "Tagum Branch",
-      lastActive: "Offline (2d)",
-      status: "Away",
-      statusColor: "bg-slate-300",
-    },
-  ];
+  });
+
+  const getRoleStyle = (roleName: string) => {
+    const normalized = roleName.toLowerCase();
+    if (normalized === "receiver") {
+      return {
+        label: "Receiver",
+        roleColor: "bg-amber-100 text-amber-700 border-amber-200",
+        icon: "fa-dolly",
+      };
+    }
+    if (normalized === "putaway") {
+      return {
+        label: "Put-Away Staff",
+        roleColor: "bg-blue-100 text-blue-700 border-blue-200",
+        icon: "fa-boxes-stacked",
+      };
+    }
+    if (normalized === "vaspersonnel") {
+      return {
+        label: "VAS Personnel",
+        roleColor: "bg-purple-100 text-purple-700 border-purple-200",
+        icon: "fa-tags",
+      };
+    }
+    if (normalized === "dispatchclerk") {
+      return {
+        label: "Dispatch Clerk",
+        roleColor: "bg-emerald-100 text-emerald-700 border-emerald-200",
+        icon: "fa-truck-ramp-box",
+      };
+    }
+    return {
+      label: roleName,
+      roleColor: "bg-slate-100 text-slate-700 border-slate-200",
+      icon: "fa-user",
+    };
+  };
+
+  const formatLastActive = (value: string) => {
+    const ts = Date.parse(value);
+    if (!Number.isFinite(ts)) return "-";
+    const diff = Date.now() - ts;
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    if (diff < hour) return `${Math.max(1, Math.floor(diff / minute))} mins ago`;
+    if (diff < day) return `${Math.floor(diff / hour)} hours ago`;
+    return `${Math.floor(diff / day)} days ago`;
+  };
+
+  const staffMembers: StaffMember[] = employees.map((employee: BranchEmployee) => {
+    const roleMeta = getRoleStyle(employee.roleName);
+    const first = (employee.firstName || "").trim();
+    const last = (employee.lastName || "").trim();
+    return {
+      id: employee.id,
+      initials: `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() || "NA",
+      name: `${first} ${last}`.trim() || employee.email,
+      email: employee.email,
+      role: roleMeta.label,
+      roleColor: roleMeta.roleColor,
+      icon: roleMeta.icon,
+      branch: employee.branch || "N/A",
+      lastActive: formatLastActive(employee.lastActiveAt),
+      status: employee.status || "Active",
+      statusColor: (employee.status || "").toLowerCase() === "active" ? "bg-green-500" : "bg-slate-300",
+    };
+  });
 
   const totalLength = staffMembers.length;
   const displayedData = staffMembers.slice(
@@ -167,7 +221,14 @@ export default function AccessControlTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {displayedData.map((staff) => (
+                  {displayedData.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-sm text-slate-500 text-center">
+                        No branch employees found.
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedData.map((staff) => (
                 <tr
                   key={staff.id}
                   className="even:bg-slate-50/50 hover:bg-blue-50/30"
@@ -214,16 +275,27 @@ export default function AccessControlTable() {
                     </span>
                   </td>
                   <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleOpenEdit(staff)}
-                      title="Edit staff"
-                      className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg transition-colors"
-                    >
-                      <Pencil className="size-4" />
-                    </button>
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEdit(staff)}
+                        title="Edit staff"
+                        className="p-2 text-slate-400 hover:text-[#001F3F] hover:bg-slate-100 rounded-lg transition-colors"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
+                      <button
+                        onClick={() => setArchiveTarget(staff)}
+                        disabled={archiveMutation.isPending}
+                        title="Archive user"
+                        className="p-2 text-slate-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <Archive className="size-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              ))}
+                    ))
+                  )}
             </tbody>
           </table>
         </div>
@@ -397,6 +469,30 @@ export default function AccessControlTable() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        onConfirm={() => {
+          if (!archiveTarget || archiveMutation.isPending) return;
+          archiveMutation.mutate(archiveTarget.id, {
+            onSuccess: () => setArchiveTarget(null),
+          });
+        }}
+        title="Archive User"
+        description="Are you sure you want to archive this branch user? They will lose access until restored."
+        confirmLabel={archiveMutation.isPending ? "Archiving..." : "Archive User"}
+        confirmVariant="warning"
+        confirmIcon={<Archive className="size-3.5" />}
+        note="User records and audit trail will be preserved."
+      >
+        {archiveTarget && (
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <p className="text-sm font-bold text-[#001F3F]">{archiveTarget.name}</p>
+            <p className="text-xs text-slate-500">{archiveTarget.email}</p>
+          </div>
+        )}
+      </ConfirmationModal>
     </>
   );
 }

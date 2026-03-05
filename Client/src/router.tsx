@@ -18,11 +18,12 @@ import AdminAccessControl from "./modules/access-control/pages/AdminAccessContro
 import BinLocationManagement from "./modules/bin-management/pages/BinLocationManagement";
 import BinsArchived from "./modules/bin-management/pages/BinsArchived";
 import ProfileSettings from "./modules/access-control/pages/ProfileSettings";
+import ArchivedBranchUsers from "./modules/access-control/pages/ArchivedBranchUsers";
+import BranchAuditLogs from "./modules/access-control/pages/BranchAuditLogs";
 
 // Super Admin Pages
 import SuperAdminOverview from "./modules/super-admin/pages/SuperAdminOverview";
 import BranchManagers from "./modules/super-admin/pages/BranchManagers";
-import SupplierRegistry from "./modules/super-admin/pages/SupplierRegistry";
 import AuditLogs from "./modules/super-admin/pages/AuditLogs";
 import ArchivedUsers from "./modules/super-admin/pages/ArchivedUsers";
 import AccountSettings from "./modules/super-admin/pages/AccountSettings";
@@ -36,15 +37,14 @@ import InboundAssigned from "./modules/inbound/pages/InboundAssigned";
 
 // Outbound Coordinator Pages
 import OutboundDashboard from "./modules/outbound/pages/OutboundDashboard";
-import BinReassignment from "./modules/outbound/pages/BinReassignment";
 import PickList from "./modules/outbound/pages/PickList";
 import OutboundActivityLog from "./modules/outbound/pages/OutboundActivityLog";
 
 // VAS Personnel Pages
 import VASDashboard from "./modules/vas/pages/VASDashboard";
-import VASIncoming from "./modules/vas/pages/VASIncoming";
 import VASProcessing from "./modules/vas/pages/VASProcessing";
 import VASActivityLog from "./modules/vas/pages/VASActivityLog";
+import VASReadyBoard from "./modules/vas/pages/VASReadyBoard";
 
 // Landing Page
 import LandingPage from "./modules/landing/pages/LandingPage";
@@ -55,6 +55,7 @@ import Unauthorized from "./shared/pages/Unauthorized";
 import BinLocation from "./modules/binlocation/pages/BinLocation";
 import ProtectedRoute from "./shared/security/ProtectedRoute";
 import PublicRouteGuard from "./shared/security/PublicRouteGuard";
+import ResetPassword from "./modules/auth/pages/ResetPassword";
 
 // Lazy-loaded Auth
 const Login = lazy(() => import("./modules/auth/pages/Login"));
@@ -70,6 +71,10 @@ export const router = createBrowserRouter([
         element: <Login />,
       },
     ],
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPassword />,
   },
 
   // ─── AUTH ──────────────────────────────────────
@@ -95,7 +100,6 @@ export const router = createBrowserRouter([
           { index: true, element: <SuperAdminOverview /> },
           { path: "managers", element: <BranchManagers /> },
           { path: "archived", element: <ArchivedUsers /> },
-          { path: "suppliers", element: <SupplierRegistry /> },
           { path: "auditlogs", element: <AuditLogs /> },
         ],
       },
@@ -161,16 +165,16 @@ export const router = createBrowserRouter([
             element: <OutboundDashboard />,
           },
           {
-            path: "reassign",
-            element: <BinReassignment />,
-          },
-          {
             path: "picklist",
             element: <PickList />,
           },
           {
             path: "activity",
             element: <OutboundActivityLog />,
+          },
+          {
+            path: "accountsettings",
+            element: <ProfileSettings />,
           },
         ],
       },
@@ -190,16 +194,16 @@ export const router = createBrowserRouter([
             element: <VASDashboard />,
           },
           {
-            path: "incoming",
-            element: <VASIncoming />,
-          },
-          {
             path: "processing",
             element: <VASProcessing />,
           },
           {
             path: "activity",
             element: <VASActivityLog />,
+          },
+          {
+            path: "accountsettings",
+            element: <ProfileSettings />,
           },
         ],
       },
@@ -222,6 +226,10 @@ export const router = createBrowserRouter([
           {
             path: "accessmanagement",
             element: <AdminAccessControl />,
+          },
+          {
+            path: "archivedusers",
+            element: <ArchivedBranchUsers />,
           },
           {
             path: "suppliermanagement",
@@ -251,6 +259,10 @@ export const router = createBrowserRouter([
             path: "profilesettings",
             element: <ProfileSettings />,
           },
+          {
+            path: "auditlogs",
+            element: <BranchAuditLogs />,
+          },
         ],
       },
     ],
@@ -270,6 +282,14 @@ export const router = createBrowserRouter([
   {
     path: "/unauthorized",
     element: <Unauthorized />,
+  },
+  {
+    path: "/ready",
+    element: <VASReadyBoard />,
+  },
+  {
+    path: "/vas/outbound-ready",
+    element: <Navigate to="/ready" replace />,
   },
 
   {

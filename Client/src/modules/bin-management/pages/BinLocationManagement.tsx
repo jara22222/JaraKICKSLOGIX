@@ -3,15 +3,19 @@ import BinsTable from "@/modules/bin-management/components/BinsTable";
 import { UseBinState } from "@/modules/bin-management/store/UseBinManagement";
 import { getBinLocations } from "@/modules/bin-management/services/binLocation";
 import { exportBinQRCodesToPDF } from "@/shared/lib/exportUtils";
+import { showSuccessToast } from "@/shared/lib/toast";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Printer, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import ConfirmationModal from "@/shared/components/ConfirmationModal";
 
 export default function BinLocationManagement() {
   const setIsAddModalOpen = UseBinState((b) => b.setIsAddModalOpen);
   const [searchQuery, setSearchQuery] = useState("");
   const [sizeFilter, setSizeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isPrintConfirmOpen, setIsPrintConfirmOpen] = useState(false);
   const { data: binsData = [] } = useQuery({
     queryKey: ["branchmanager-bins"],
     queryFn: getBinLocations,
@@ -23,15 +27,24 @@ export default function BinLocationManagement() {
   }, [setIsAddModalOpen]);
 
   const handlePrintAll = async () => {
-    await exportBinQRCodesToPDF(
-      "bin_qr_codes",
-      binsData.map((bin) => ({
-        binId: bin.binId,
-        binLocation: bin.binLocation,
-        binSize: bin.binSize,
-        qrCodeString: bin.qrCodeString,
-      })),
-    );
+    setIsPrinting(true);
+    try {
+      const isGenerated = await exportBinQRCodesToPDF(
+        "bin_qr_codes",
+        binsData.map((bin) => ({
+          binId: bin.binId,
+          binLocation: bin.binLocation,
+          binSize: bin.binSize,
+          qrCodeString: bin.qrCodeString,
+        })),
+      );
+
+      if (isGenerated) {
+        showSuccessToast("Bin QR PDF generated successfully.");
+      }
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   return (
@@ -78,11 +91,12 @@ export default function BinLocationManagement() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={handlePrintAll}
-              className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
+              onClick={() => setIsPrintConfirmOpen(true)}
+              disabled={isPrinting}
+              className="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Printer className="size-4" />
-              Print All QRs
+              {isPrinting ? "Generating..." : "Print All QRs"}
             </button>
             <button
               onClick={() => setIsAddModalOpen(true)}
@@ -98,6 +112,20 @@ export default function BinLocationManagement() {
           searchQuery={searchQuery}
           sizeFilter={sizeFilter}
           statusFilter={statusFilter}
+        />
+
+        <ConfirmationModal
+          isOpen={isPrintConfirmOpen}
+          onClose={() => setIsPrintConfirmOpen(false)}
+          onConfirm={() => {
+            setIsPrintConfirmOpen(false);
+            void handlePrintAll();
+          }}
+          title="Generate Bin QR PDF"
+          description="Confirm generation of QR codes for all current bins."
+          confirmLabel={isPrinting ? "Generating..." : "Generate PDF"}
+          confirmVariant="primary"
+          confirmIcon={<Printer className="size-3.5" />}
         />
       </div>
     </>

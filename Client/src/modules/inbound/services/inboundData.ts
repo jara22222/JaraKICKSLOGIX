@@ -39,6 +39,14 @@ export type InboundActivity = {
   timestamp: string;
 };
 
+export type InboundKpis = {
+  pendingAcceptanceCount: number;
+  inTransitCount: number;
+  storedTodayCount: number;
+  actionsTodayCount: number;
+  totalUnitsIncoming: number;
+};
+
 const formatDate = (value: string) =>
   new Date(value).toLocaleDateString("en-US", {
     month: "short",
@@ -88,4 +96,62 @@ export const getInboundActivityLog = async (): Promise<InboundActivity[]> => {
     ...entry,
     timestamp: formatDateTime(entry.timestamp),
   }));
+};
+
+export const getInboundKpis = async (): Promise<InboundKpis> => {
+  const buildFallbackFromLiveEndpoints = async (): Promise<InboundKpis> => {
+    const [incomingResponse, receiptsResponse, activityResponse] = await Promise.all([
+      apiClient.get<IncomingShipment[]>("/api/ReceiverWorkflow/incoming-shipments"),
+      apiClient.get<InboundReceipt[]>("/api/ReceiverWorkflow/receipts"),
+      apiClient.get<InboundActivity[]>("/api/ReceiverWorkflow/activity-log"),
+    ]);
+
+    const incomingShipments = incomingResponse.data ?? [];
+    const receipts = receiptsResponse.data ?? [];
+    const activity = activityResponse.data ?? [];
+
+    const pendingAcceptanceCount = incomingShipments.filter(
+      (item) => item.status === "Arrived" || item.status === "PendingReceive",
+    ).length;
+    const inTransitCount = incomingShipments.filter((item) => item.status === "In Transit").length;
+    const storedTodayCount = receipts.filter((item) => item.status === "Stored").length;
+
+    const now = new Date();
+    const isSameDay = (value: string) => {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return false;
+      return (
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate()
+      );
+    };
+
+    const actionsTodayCount = activity.filter((entry) => isSameDay(entry.timestamp)).length;
+    const totalUnitsIncoming = incomingShipments.reduce((sum, item) => sum + (item.qty ?? 0), 0);
+
+    return {
+      pendingAcceptanceCount,
+      inTransitCount,
+      storedTodayCount,
+      actionsTodayCount,
+      totalUnitsIncoming,
+    };
+  };
+
+  try {
+    const { data } = await apiClient.get<InboundKpis>("/api/ReceiverWorkflow/kpis");
+    return data;
+  } catch (error: any) {
+    const status = error?.response?.status;
+    if (status === 404) {
+      try {
+        return await buildFallbackFromLiveEndpoints();
+      } catch {
+        throw new Error("Unable to load inbound KPIs right now. Please try again.");
+      }
+    }
+
+    throw error;
+  }
 };
