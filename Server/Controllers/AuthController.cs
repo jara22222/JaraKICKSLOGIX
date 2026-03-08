@@ -9,6 +9,7 @@ using Server.Services;
 using Server.Hubs.BranchManagerHub;
 using Server.Utilities;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
@@ -18,6 +19,7 @@ namespace Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [EnableRateLimiting("auth-sensitive")]
     public class AuthController : ControllerBase
     {
         private readonly UserManager<Users> _userManager;
@@ -107,6 +109,7 @@ namespace Server.Controllers
         }
 
         [AllowAnonymous]
+        [EnableRateLimiting("forgot-password")]
         [HttpPost("forgot-password/branch-request")]
         public async Task<IActionResult> SubmitBranchForgotPasswordRequestAsync([FromBody] BranchForgotPasswordRequestDto dto)
         {

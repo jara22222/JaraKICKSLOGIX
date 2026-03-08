@@ -162,12 +162,46 @@ function Magnetic({ children }: { children: React.ReactNode }) {
    ═══════════════════════════════════════════════════ */
 
 const SERVICES = [
-  { icon: Warehouse, label: "Smart Warehousing", num: "01" },
-  { icon: ScanLine, label: "QR Operations", num: "02" },
-  { icon: PackageCheck, label: "Value-Added Services", num: "03" },
-  { icon: Truck, label: "Fulfillment & Dispatch", num: "04" },
-  { icon: BarChart3, label: "Real-Time Analytics", num: "05" },
-  { icon: ShieldCheck, label: "Role-Based Access", num: "06" },
+  {
+    icon: Warehouse,
+    label: "Smart Warehousing",
+    desc: "Structured storage workflows across all active branch locations.",
+  },
+  {
+    icon: ScanLine,
+    label: "QR Operations",
+    desc: "Fast scan-first receiving, put-away, and movement validation.",
+  },
+  {
+    icon: PackageCheck,
+    label: "Value-Added Services",
+    desc: "Packing, checks, and prep tasks integrated with outbound flow.",
+  },
+  {
+    icon: Truck,
+    label: "Fulfillment & Dispatch",
+    desc: "Order approvals, pick execution, and dispatch-ready tracking.",
+  },
+  {
+    icon: BarChart3,
+    label: "Real-Time Analytics",
+    desc: "Live queue visibility for inbound, inventory, and outbound.",
+  },
+  {
+    icon: ShieldCheck,
+    label: "Role-Based Access",
+    desc: "Scoped actions and data isolation per role and branch.",
+  },
+  {
+    icon: MapPin,
+    label: "Branch Visibility",
+    desc: "Branch-specific operational views with centralized oversight.",
+  },
+  {
+    icon: Phone,
+    label: "Operational Support",
+    desc: "Guided onboarding and support for daily warehouse execution.",
+  },
 ];
 
 const PROCESS_STEPS = [
@@ -200,7 +234,8 @@ const SHOWCASE = [
     desc: "Complete visibility across every branch, manager, and supplier.",
     path: "/superadmin",
     gradient: "from-blue-600/40 to-indigo-900/40",
-    image: "",
+    image:
+      "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1400&q=80",
   },
   {
     title: "Inbound Portal",
@@ -208,7 +243,8 @@ const SHOWCASE = [
     desc: "Accept shipments, auto-assign bins, print labels.",
     path: "/inbound",
     gradient: "from-emerald-600/40 to-teal-900/40",
-    image: "",
+    image:
+      "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1400&q=80",
   },
   {
     title: "Outbound Portal",
@@ -216,7 +252,8 @@ const SHOWCASE = [
     desc: "Scan-powered bin reassignment and pick fulfillment.",
     path: "/outbound",
     gradient: "from-orange-600/40 to-amber-900/40",
-    image: "",
+    image:
+      "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&w=1400&q=80",
   },
   {
     title: "VAS Portal",
@@ -224,7 +261,8 @@ const SHOWCASE = [
     desc: "Quality checks, shipping label printing, dispatch.",
     path: "/vas",
     gradient: "from-violet-600/40 to-purple-900/40",
-    image: "",
+    image:
+      "https://images.unsplash.com/photo-1601597111158-2fceff292cdc?auto=format&fit=crop&w=1400&q=80",
   },
 ];
 
@@ -238,6 +276,89 @@ const MARQUEE_WORDS = [
   "Role-Based Access",
 ];
 
+const BUILT_WITH = [
+  {
+    name: "React",
+    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original-wordmark.svg",
+    invert: false,
+  },
+  {
+    name: "TypeScript",
+    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg",
+    invert: false,
+  },
+  {
+    name: "Vite",
+    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vitejs/vitejs-original.svg",
+    invert: false,
+  },
+  {
+    name: "Tailwind CSS",
+    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg",
+    invert: false,
+  },
+  {
+    name: "Framer Motion",
+    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/framermotion/framermotion-original.svg",
+    invert: false,
+  },
+  {
+    name: "TanStack Query",
+    logo: "https://cdn.simpleicons.org/reactquery/FFFFFF",
+    invert: false,
+  },
+  {
+    name: "ASP.NET Core",
+    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/dot-net/dot-net-original-wordmark.svg",
+    invert: false,
+  },
+  {
+    name: "C#",
+    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/csharp/csharp-original.svg",
+    invert: false,
+  },
+  {
+    name: "Entity Framework",
+    logo: "https://cdn.simpleicons.org/dotnet/FFFFFF",
+    invert: false,
+  },
+  {
+    name: "SignalR",
+    logo: "https://cdn.simpleicons.org/signal/FFFFFF",
+    invert: false,
+  },
+  {
+    name: "SQL Server",
+    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/microsoftsqlserver/microsoftsqlserver-plain-wordmark.svg",
+    invert: false,
+  },
+  {
+    name: "AWS",
+    logo: "/Amazon_Web_Services_Logo.svg",
+    invert: false,
+  },
+  {
+    name: "Docker",
+    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/docker/docker-original-wordmark.svg",
+    invert: false,
+  },
+  {
+    name: "Render",
+    logo: "https://cdn.simpleicons.org/render/FFFFFF",
+    invert: false,
+  },
+  {
+    name: "Vercel",
+    logo: "https://cdn.simpleicons.org/vercel/FFFFFF",
+    invert: false,
+  },
+  {
+    name: "JWT",
+    logo: "https://cdn.simpleicons.org/jsonwebtokens/FFFFFF",
+    invert: false,
+  },
+];
+
 /* ═══════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════ */
@@ -247,6 +368,7 @@ export default function LandingPage() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
   const [loadPercent, setLoadPercent] = useState(0);
+  const [heroVideoLoaded, setHeroVideoLoaded] = useState(false);
 
   // Nav scroll
   const { scrollY } = useScroll();
@@ -299,30 +421,18 @@ export default function LandingPage() {
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-[140px] sm:text-[200px] font-black text-white/[0.03] leading-none absolute select-none tabular-nums"
+              className="relative z-10 text-[140px] sm:text-[200px] font-black text-white/[0.06] leading-none select-none tabular-nums"
             >
               {String(loadPercent).padStart(2, "0")}
             </motion.p>
-
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", duration: 0.6 }}
-              className="relative z-10 flex flex-col items-center"
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="relative z-10 mt-3 text-[10px] font-bold text-white/50 uppercase tracking-[0.4em]"
             >
-              <motion.div
-                animate={{ rotate: [0, 360] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 rounded-2xl border border-[#FFD700]/20 flex items-center justify-center mb-6"
-              >
-                <div className="w-10 h-10 bg-[#FFD700] rounded-xl flex items-center justify-center">
-                  <Footprints className="size-5 text-[#001F3F]" />
-                </div>
-              </motion.div>
-              <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.4em]">
-                Loading experience
-              </p>
-            </motion.div>
+              Loading experience
+            </motion.p>
 
             <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/5">
               <motion.div
@@ -340,10 +450,14 @@ export default function LandingPage() {
           initial={{ y: -100 }}
           animate={introComplete ? { y: 0 } : { y: -100 }}
           transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
-          className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${navSolid ? "bg-[#001F3F]/80 backdrop-blur-2xl border-b border-white/[0.06]" : "bg-transparent"}`}
+          className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
+            navSolid
+              ? "bg-[#001F3F]/88 backdrop-blur-2xl"
+              : "bg-gradient-to-b from-[#001F3F]/78 via-[#001F3F]/56 to-transparent backdrop-blur-md"
+          }`}
         >
           <div className="max-w-7xl mx-auto px-6 lg:px-10 h-16 lg:h-20 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2.5 group">
+            <Link to="/" className="flex items-center gap-2.5 group drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]">
               <div className="w-8 h-8 bg-[#FFD700] rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-500">
                 <Footprints className="size-4 text-[#001F3F]" />
               </div>
@@ -352,7 +466,7 @@ export default function LandingPage() {
               </span>
             </Link>
 
-            <div className="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.2em] text-white/60">
+            <div className="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.2em] text-white/85 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">
               {["Services", "Process", "Work", "Contact"].map((item) => (
                 <a
                   key={item}
@@ -369,7 +483,7 @@ export default function LandingPage() {
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setPartnershipOpen(true)}
-                  className="bg-[#FFD700] text-[#001F3F] px-5 py-2.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-2 hover:shadow-lg hover:shadow-yellow-500/20 transition-shadow"
+                  className="bg-[#FFD700] text-[#0B1D36] px-5 py-2.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-2 shadow-[inset_0_-1px_0_rgba(0,0,0,0.18)] hover:shadow-lg hover:shadow-yellow-500/20 transition-shadow"
                 >
                   Schedule Call <ArrowUpRight className="size-3.5" />
                 </motion.button>
@@ -423,7 +537,7 @@ export default function LandingPage() {
                       setPartnershipOpen(true);
                       setMobileMenu(false);
                     }}
-                    className="bg-[#FFD700] text-[#001F3F] py-3 rounded-full text-xs font-black uppercase tracking-wider"
+                    className="bg-[#FFD700] text-[#0B1D36] py-3 rounded-full text-xs font-black uppercase tracking-wider shadow-[inset_0_-1px_0_rgba(0,0,0,0.18)]"
                   >
                     Schedule Call
                   </button>
@@ -438,6 +552,27 @@ export default function LandingPage() {
           ref={heroRef}
           className="relative min-h-screen flex items-center pt-20 lg:pt-0 overflow-hidden"
         >
+          {/* Hero warehouse video background */}
+          <div className="absolute inset-0">
+            <video
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+                heroVideoLoaded ? "opacity-100" : "opacity-0"
+              }`}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              onLoadedData={() => setHeroVideoLoaded(true)}
+            >
+              <source src="/videos/warehouse-hero.webm" type="video/webm" />
+              <source src="/videos/warehouse-hero.mp4" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#001F3F]/92 via-[#001F3F]/82 to-[#02274c]/90" />
+            <div className="absolute inset-0 shadow-[inset_0_0_140px_rgba(0,31,63,0.55)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,215,0,0.08),transparent_45%)]" />
+          </div>
+
           {/* Ambient gradient orb */}
           <motion.div
             animate={{ x: [0, 40, 0], y: [0, -30, 0], scale: [1, 1.15, 1] }}
@@ -449,13 +584,6 @@ export default function LandingPage() {
             style={{ y: heroY, opacity: heroOp, scale: heroScale }}
             className="max-w-7xl mx-auto px-6 lg:px-10 w-full py-20 relative z-10"
           >
-            <motion.div
-              initial={{ opacity: 0, width: 0 }}
-              animate={introComplete ? { opacity: 1, width: "3rem" } : {}}
-              transition={{ delay: 0.4, duration: 0.8, ease: EASE_OUT_EXPO }}
-              className="h-px bg-[#FFD700] mb-8"
-            />
-
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={introComplete ? { opacity: 1, y: 0 } : {}}
@@ -490,7 +618,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={introComplete ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 1.2, duration: 0.8, ease: EASE_OUT_QUART }}
-              className="text-base sm:text-lg text-white/60 max-w-lg leading-relaxed mb-12 font-light"
+              className="text-base sm:text-lg text-white/95 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)] max-w-lg leading-relaxed mb-12 font-medium"
             >
               End-to-end inventory control, QR-powered operations, and real-time
               visibility — from supplier dock to customer doorstep.
@@ -506,7 +634,7 @@ export default function LandingPage() {
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setPartnershipOpen(true)}
-                  className="bg-[#FFD700] text-[#001F3F] px-8 py-4 rounded-full font-black text-sm uppercase tracking-wider flex items-center justify-center gap-3 hover:shadow-2xl hover:shadow-yellow-500/20 transition-shadow duration-500"
+                  className="bg-[#FFD700] text-[#0B1D36] px-8 py-4 rounded-full font-black text-sm uppercase tracking-wider flex items-center justify-center gap-3 shadow-[inset_0_-1px_0_rgba(0,0,0,0.18)] hover:shadow-2xl hover:shadow-yellow-500/20 transition-shadow duration-500"
                 >
                   Schedule Call <ArrowRight className="size-4" />
                 </motion.button>
@@ -515,7 +643,7 @@ export default function LandingPage() {
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => setPartnershipOpen(true)}
-                className="border border-white/10 text-white px-8 py-4 rounded-full font-bold text-sm uppercase tracking-wider hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 flex items-center justify-center gap-2"
+                className="border border-white/35 bg-[#001F3F]/55 backdrop-blur-sm text-white px-8 py-4 rounded-full font-bold text-sm uppercase tracking-wider hover:bg-[#001F3F]/70 hover:border-white/55 transition-all duration-500 flex items-center justify-center gap-2"
               >
                 Request Partnership
               </motion.button>
@@ -546,7 +674,7 @@ export default function LandingPage() {
             <div className="flex shrink-0">
               {MARQUEE_WORDS.map((word, i) => (
                 <span key={i} className="flex items-center gap-5 px-5 shrink-0">
-                  <span className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase italic tracking-tight text-transparent [-webkit-text-stroke:1px_rgba(255,215,0,0.15)]">
+                  <span className="text-3xl sm:text-4xl lg:text-5xl leading-[1.12] font-black uppercase italic tracking-tight text-[#FFD700]/18 [-webkit-text-stroke:1px_rgba(255,215,0,0.35)] drop-shadow-[0_1px_0_rgba(0,0,0,0.3)]">
                     {word}
                   </span>
                   <span className="w-2 h-2 rounded-full bg-[#FFD700]/30 shrink-0" />
@@ -560,60 +688,59 @@ export default function LandingPage() {
         <section
           id="services"
           ref={servicesRef}
-          className="py-20 lg:py-28 relative"
+          className="py-20 lg:py-28 relative overflow-hidden"
         >
-          <div className="max-w-7xl mx-auto px-6 lg:px-10">
-            <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
-              <div className="lg:sticky lg:top-28">
-                <FadeUp>
-                  <p className="text-[11px] font-bold text-[#FFD700] uppercase tracking-[0.3em] mb-4">
-                    What We Do
-                  </p>
-                </FadeUp>
-                <RevealLine delay={0.1}>
-                  <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tighter leading-[0.92]">
-                    We are
-                  </h2>
-                </RevealLine>
-                <RevealLine delay={0.2}>
-                  <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tighter leading-[0.92]">
-                    Good at
-                  </h2>
-                </RevealLine>
-                <FadeUp delay={0.4}>
-                  <p className="text-white/55 mt-6 leading-relaxed max-w-md text-sm font-light">
-                    A complete ecosystem of warehouse management tools designed
-                    for sneaker brands, distributors, and e-commerce businesses.
-                  </p>
-                </FadeUp>
-              </div>
+          {/* Dither-style animated background (inspired by ReactBits) */}
+          <motion.div
+            aria-hidden
+            className="absolute inset-0 opacity-[0.14]"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.65) 1px, transparent 0)",
+              backgroundSize: "8px 8px",
+            }}
+            animate={{ backgroundPosition: ["0px 0px", "8px 8px", "0px 0px"] }}
+            transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-b from-[#001F3F]/75 via-[#002a57]/65 to-[#001F3F]/78"
+          />
 
-              <div className="space-y-2">
-                {SERVICES.map((s, i) => (
-                  <FadeUp key={i} delay={i * 0.06}>
-                    <motion.div
-                      whileHover={{ x: 8 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 400,
-                        damping: 25,
-                      }}
-                      className="flex items-center gap-4 p-4 rounded-xl border border-white/[0.04] hover:border-white/[0.08] hover:bg-white/[0.02] transition-colors duration-500 cursor-default group"
-                    >
-                      <span className="text-[10px] font-bold text-white/25 font-mono w-5 shrink-0 group-hover:text-[#FFD700]/40 transition-colors duration-500">
-                        {s.num}
-                      </span>
-                      <div className="w-10 h-10 rounded-lg bg-white/[0.03] flex items-center justify-center group-hover:bg-[#FFD700]/10 transition-colors duration-500 shrink-0">
-                        <s.icon className="size-[18px] text-white/40 group-hover:text-[#FFD700] transition-colors duration-500" />
-                      </div>
-                      <span className="text-sm font-bold tracking-tight flex-1">
-                        {s.label}
-                      </span>
-                      <ArrowUpRight className="size-3.5 text-white/[0.06] group-hover:text-[#FFD700]/60 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-500" />
-                    </motion.div>
-                  </FadeUp>
-                ))}
-              </div>
+          <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-10">
+            <FadeUp>
+              <p className="text-[11px] font-bold text-[#FFD700] uppercase tracking-[0.3em] mb-4">
+                What We Do
+              </p>
+            </FadeUp>
+            <RevealLine delay={0.1}>
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tighter leading-[0.92] max-w-3xl">
+                We are good at warehouse operations
+              </h2>
+            </RevealLine>
+            <FadeUp delay={0.3}>
+              <p className="text-white/60 mt-6 leading-relaxed max-w-2xl text-sm sm:text-base font-light">
+                A complete ecosystem of warehouse management tools designed for
+                sneaker brands, distributors, and e-commerce businesses.
+              </p>
+            </FadeUp>
+
+            <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+              {SERVICES.map((s, i) => (
+                <FadeUp key={s.label} delay={i * 0.05}>
+                  <div className="h-full rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6 cursor-default">
+                    <div className="w-9 h-9 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center mb-4">
+                      <s.icon className="size-4 text-[#FFD700]/90" />
+                    </div>
+                    <h3 className="text-base font-bold tracking-tight text-white mb-2">
+                      {s.label}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-white/55 leading-relaxed font-light">
+                      {s.desc}
+                    </p>
+                  </div>
+                </FadeUp>
+              ))}
             </div>
           </div>
         </section>
@@ -681,7 +808,7 @@ export default function LandingPage() {
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setPartnershipOpen(true)}
-                  className="bg-[#FFD700] text-[#001F3F] px-8 py-4 rounded-full font-black text-sm uppercase tracking-wider flex items-center gap-3 hover:shadow-2xl hover:shadow-yellow-500/20 transition-shadow duration-500"
+                  className="bg-[#FFD700] text-[#0B1D36] px-8 py-4 rounded-full font-black text-sm uppercase tracking-wider flex items-center gap-3 shadow-[inset_0_-1px_0_rgba(0,0,0,0.18)] hover:shadow-2xl hover:shadow-yellow-500/20 transition-shadow duration-500"
                 >
                   Schedule Call <ArrowRight className="size-4" />
                 </motion.button>
@@ -702,7 +829,7 @@ export default function LandingPage() {
                 "Ship with confidence",
               ].map((word, i) => (
                 <span key={i} className="flex items-center gap-5 px-5 shrink-0">
-                  <span className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase italic tracking-tight text-transparent [-webkit-text-stroke:1px_rgba(255,215,0,0.15)]">
+                  <span className="text-3xl sm:text-4xl lg:text-5xl leading-[1.12] font-black uppercase italic tracking-tight text-[#FFD700]/18 [-webkit-text-stroke:1px_rgba(255,215,0,0.35)] drop-shadow-[0_1px_0_rgba(0,0,0,0.3)]">
                     {word}
                   </span>
                   <span className="w-2 h-2 rounded-full bg-[#FFD700]/30 shrink-0" />
@@ -739,16 +866,9 @@ export default function LandingPage() {
             <div className="grid sm:grid-cols-2 gap-5">
               {SHOWCASE.map((item, i) => (
                 <FadeUp key={i} delay={i * 0.08}>
-                  <Link to={item.path}>
-                    <motion.div
-                      whileHover={{ y: -4 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 400,
-                        damping: 25,
-                      }}
-                      className="group relative overflow-hidden rounded-2xl border border-white/[0.04] hover:border-white/[0.08] transition-all duration-500 cursor-pointer h-full"
-                    >
+                  <motion.div
+                    className="group relative overflow-hidden rounded-2xl border border-white/[0.04] h-full cursor-default"
+                  >
                       <div
                         className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-700`}
                       />
@@ -794,10 +914,77 @@ export default function LandingPage() {
                           {item.desc}
                         </p>
                       </div>
-                    </motion.div>
-                  </Link>
+                  </motion.div>
                 </FadeUp>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <ScaleLine />
+
+        {/* ═══ BUILT WITH ═══ */}
+        <section className="py-20 lg:py-24 relative overflow-hidden">
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-[0.18]"
+            style={{
+              backgroundImage:
+                "linear-gradient(to right, rgba(255,255,255,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, transparent 1px)",
+              backgroundSize: "42px 42px",
+            }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-b from-[#001F3F]/65 via-[#001F3F]/78 to-[#001F3F]/72"
+          />
+          <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-10">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mb-14 lg:mb-16">
+              <div>
+                <FadeUp>
+                  <p className="text-[11px] font-bold text-[#FFD700] uppercase tracking-[0.3em] mb-3">
+                    Built with
+                  </p>
+                </FadeUp>
+                <RevealLine>
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tighter leading-[0.95]">
+                    Tools and tech behind
+                  </h2>
+                </RevealLine>
+                <RevealLine delay={0.08}>
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tighter leading-[0.95]">
+                    KicksLogix
+                  </h2>
+                </RevealLine>
+              </div>
+              <FadeUp delay={0.15}>
+                <p className="text-sm text-white/55 leading-relaxed max-w-md font-light">
+                  Production-focused stack used to build realtime workflows,
+                  secure APIs, and role-based warehouse operations.
+                </p>
+              </FadeUp>
+            </div>
+
+            <div className="pt-6 lg:pt-8">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-12 sm:gap-y-14 lg:gap-x-12 lg:gap-y-16">
+                {BUILT_WITH.map((tech, i) => (
+                  <FadeUp key={tech.name} delay={i * 0.03}>
+                    <div className="group relative flex h-20 items-center justify-center">
+                      <img
+                        src={tech.logo}
+                        alt={tech.name}
+                        loading="lazy"
+                        className={`h-12 sm:h-14 max-w-[220px] object-contain opacity-95 transition-all duration-300 group-hover:opacity-35 ${
+                          tech.invert ? "invert brightness-0" : ""
+                        }`}
+                      />
+                      <span className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tracking-wider text-white/85 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        {tech.name}
+                      </span>
+                    </div>
+                  </FadeUp>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -850,7 +1037,7 @@ export default function LandingPage() {
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setPartnershipOpen(true)}
-                        className="bg-[#FFD700] text-[#001F3F] px-8 py-4 rounded-full font-black text-sm uppercase tracking-wider flex items-center justify-center gap-3 hover:shadow-2xl hover:shadow-yellow-500/20 transition-shadow duration-500"
+                        className="bg-[#FFD700] text-[#0B1D36] px-8 py-4 rounded-full font-black text-sm uppercase tracking-wider flex items-center justify-center gap-3 shadow-[inset_0_-1px_0_rgba(0,0,0,0.18)] hover:shadow-2xl hover:shadow-yellow-500/20 transition-shadow duration-500"
                       >
                         <Phone className="size-4" /> Schedule a Call{" "}
                         <ArrowRight className="size-4" />
@@ -872,34 +1059,9 @@ export default function LandingPage() {
         </section>
 
         {/* ═══ FOOTER ═══ */}
-        <footer className="border-t border-white/[0.04]">
+        <footer className="border-t border-white/[0.04] relative overflow-hidden">
           <div className="max-w-7xl mx-auto px-6 lg:px-10">
-            <div className="py-16 lg:py-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
-              <div>
-                <div className="flex items-center gap-2.5 mb-5">
-                  <div className="w-10 h-10 bg-[#FFD700] rounded-xl flex items-center justify-center">
-                    <Footprints className="size-5 text-[#001F3F]" />
-                  </div>
-                  <span className="font-black text-xl uppercase italic tracking-tight">
-                    KicksLogix
-                  </span>
-                </div>
-                <p className="text-sm text-white/50 leading-relaxed mb-6 max-w-xs font-light">
-                  The enterprise WMS built for sneaker brands, distributors, and
-                  e-commerce businesses that ship at scale.
-                </p>
-                <div className="flex items-center gap-3">
-                  {["Fb", "In", "Tw", "Ig"].map((s) => (
-                    <div
-                      key={s}
-                      className="w-9 h-9 rounded-full bg-white/[0.03] border border-white/[0.04] flex items-center justify-center text-[10px] font-bold text-white/45 hover:bg-[#FFD700]/10 hover:text-[#FFD700] hover:border-[#FFD700]/20 transition-all duration-500 cursor-pointer"
-                    >
-                      {s}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
+            <div className="pt-14 pb-12 lg:pt-16 lg:pb-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12 lg:gap-10">
               <div>
                 <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 mb-5">
                   Platform
@@ -998,7 +1160,7 @@ export default function LandingPage() {
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     onClick={() => setPartnershipOpen(true)}
-                    className="w-full bg-[#FFD700] text-[#001F3F] py-3 rounded-full font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-yellow-500/20 transition-shadow duration-500"
+                    className="w-full bg-[#FFD700] text-[#0B1D36] py-3 rounded-full font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-[inset_0_-1px_0_rgba(0,0,0,0.18)] hover:shadow-lg hover:shadow-yellow-500/20 transition-shadow duration-500"
                   >
                     <Phone className="size-3.5" /> Request a Call
                   </motion.button>
@@ -1006,32 +1168,39 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="border-t border-white/[0.04]" />
-            <div className="py-6 flex flex-col md:flex-row items-center justify-between gap-4">
-              <p className="text-[11px] text-white/35">
-                &copy; {new Date().getFullYear()} KicksLogix WMS. All rights
-                reserved.
-              </p>
-              <div className="flex items-center gap-6 text-[11px] text-white/35">
-                <a
-                  href="#"
-                  className="hover:text-white/60 transition-colors duration-300"
-                >
-                  Privacy
-                </a>
-                <a
-                  href="#"
-                  className="hover:text-white/60 transition-colors duration-300"
-                >
-                  Terms
-                </a>
-                <a
-                  href="#"
-                  className="hover:text-white/60 transition-colors duration-300"
-                >
-                  Cookies
-                </a>
+            <div className="py-6 sm:py-7">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] text-white/35">
+                <p>
+                  &copy; {new Date().getFullYear()} KicksLogix WMS. All rights
+                  reserved.
+                </p>
+                <div className="flex items-center gap-6">
+                  <a
+                    href="#"
+                    className="hover:text-white/60 transition-colors duration-300"
+                  >
+                    Privacy
+                  </a>
+                  <a
+                    href="#"
+                    className="hover:text-white/60 transition-colors duration-300"
+                  >
+                    Terms
+                  </a>
+                  <a
+                    href="#"
+                    className="hover:text-white/60 transition-colors duration-300"
+                  >
+                    Cookies
+                  </a>
+                </div>
               </div>
+            </div>
+
+            <div className="h-[160px] sm:h-[210px] lg:h-[270px] border-t border-white/[0.04] flex items-end justify-center">
+              <h2 className="px-2 text-center whitespace-nowrap text-[clamp(4rem,20vw,12rem)] leading-[0.86] font-black tracking-tighter text-white/95 select-none">
+                KicksLogix
+              </h2>
             </div>
           </div>
         </footer>

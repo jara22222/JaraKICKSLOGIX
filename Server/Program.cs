@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -11,9 +13,13 @@ using Server.Services;
 using Server.Hubs;
 using Server.Hubs.BranchManagerHub;
 using Scalar.AspNetCore;
+using System.Threading.RateLimiting;
 
 
 var builder = WebApplication.CreateBuilder(args);
+var envJwtSigningKey = Environment.GetEnvironmentVariable("JWT__Key")?.Trim();
+var envDefaultConnectionRaw = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+var envResendApiKey = Environment.GetEnvironmentVariable("KICKSLOGIX_EMAIL_API_KEY")?.Trim();
 
 static string NormalizeConnectionStringValue(string? rawValue)
 {
@@ -104,7 +110,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpContextAccessor();
 
 var envDefaultConnection = NormalizeConnectionStringValue(
-    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"));
+    envDefaultConnectionRaw);
 var appSettingsFallbackConnection = new ConfigurationBuilder()
     .SetBasePath(builder.Environment.ContentRootPath)
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
@@ -124,6 +130,27 @@ if (string.IsNullOrWhiteSpace(resolvedDefaultConnection))
 {
     throw new InvalidOperationException(
         "No SQL connection string configured. Set ConnectionStrings__DefaultConnection or appsettings.json ConnectionStrings:DefaultConnection.");
+}
+
+if (builder.Environment.IsProduction())
+{
+    if (string.IsNullOrWhiteSpace(envDefaultConnection))
+    {
+        throw new InvalidOperationException(
+            "Production secret missing: ConnectionStrings__DefaultConnection must be provided via environment variable.");
+    }
+
+    if (string.IsNullOrWhiteSpace(envJwtSigningKey))
+    {
+        throw new InvalidOperationException(
+            "Production secret missing: JWT__Key must be provided via environment variable.");
+    }
+
+    if (string.IsNullOrWhiteSpace(envResendApiKey))
+    {
+        throw new InvalidOperationException(
+            "Production secret missing: KICKSLOGIX_EMAIL_API_KEY must be provided via environment variable.");
+    }
 }
 
 try
@@ -172,6 +199,14 @@ builder.Services.AddAuthentication(options => {
     options.DefaultForbidScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options => {
+    var jwtSigningKey = string.IsNullOrWhiteSpace(envJwtSigningKey)
+        ? builder.Configuration["JWT:Key"]
+        : envJwtSigningKey;
+    if (string.IsNullOrWhiteSpace(jwtSigningKey))
+    {
+        throw new InvalidOperationException("JWT signing key is missing. Configure JWT__Key (recommended) or JWT:Key.");
+    }
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -180,7 +215,7 @@ builder.Services.AddAuthentication(options => {
         ValidAudience = builder.Configuration["JWT:Audience"],
         ValidateIssuerSigningKey = true, // Set to boolean
         IssuerSigningKey = new SymmetricSecurityKey( // Assigned actual key here with capital 'K'
-            System.Text.Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!) // Added dot
+            System.Text.Encoding.UTF8.GetBytes(jwtSigningKey)
         )
     };
     options.Events = new JwtBearerEvents
@@ -218,8 +253,54 @@ builder.Services
     .PersistKeysToDbContext<ApplicationDbContext>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var details = new ValidationProblemDetails(context.ModelState)
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Validation failed.",
+                Detail = "One or more input fields are invalid."
+            };
+            return new BadRequestObjectResult(details);
+        };
+    });
 builder.Services.AddSignalR();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { message = "Too many requests. Please try again later." },
+            cancellationToken: cancellationToken);
+    };
+
+    options.AddPolicy("auth-sensitive", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"{httpContext.Connection.RemoteIpAddress}:{httpContext.Request.Path}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+
+    options.AddPolicy("forgot-password", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"{httpContext.Connection.RemoteIpAddress}:{httpContext.Request.Path}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 3,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
 var app = builder.Build();
 
 var resendApiKeyFromConfig = builder.Configuration["Email:ApiKey"];
@@ -285,6 +366,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 app.UseRouting();
+app.UseRateLimiter();
 app.UseCors("MyAllowSpecificOrigins");
 app.UseAuthentication();
 app.UseAuthorization();
