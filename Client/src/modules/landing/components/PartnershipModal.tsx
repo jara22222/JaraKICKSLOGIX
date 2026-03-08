@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Phone,
+  Clock3,
   Building2,
   User,
   Mail,
@@ -57,6 +58,9 @@ export default function PartnershipModal({
     onClose();
   };
 
+  const fieldClass =
+    "w-full pl-10 pr-3 py-3 border border-white/12 bg-[#082546] text-white placeholder:text-slate-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FFD700]/25 focus:border-[#FFD700]/50 transition-all [color-scheme:dark]";
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -81,10 +85,10 @@ export default function PartnershipModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 40 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            className="relative w-full max-w-xl border border-white/10 bg-gradient-to-b from-[#0B2B4E] to-[#071A33] rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
           >
             {/* Header */}
-            <div className="bg-[#001F3F] px-6 py-5 flex items-center justify-between shrink-0">
+            <div className="bg-[#052447] px-6 py-5 flex items-center justify-between shrink-0 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-[#FFD700] rounded-lg flex items-center justify-center">
                   <Footprints className="size-5 text-[#001F3F]" />
@@ -102,7 +106,7 @@ export default function PartnershipModal({
               </div>
               <button
                 onClick={handleClose}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-slate-300 hover:text-white transition-colors rounded-lg p-1.5 hover:bg-white/10"
               >
                 <X className="size-5" />
               </button>
@@ -148,14 +152,14 @@ export default function PartnershipModal({
                 onSubmit={handleSubmit}
                 className="overflow-y-auto flex-1 p-6 space-y-4"
               >
-                <p className="text-xs text-slate-500 leading-relaxed mb-2">
+                <p className="text-sm text-slate-300 leading-relaxed mb-2">
                   Fill in your details and we'll call you to discuss a
                   partnership. No subscriptions — just a conversation.
                 </p>
 
                 {/* Partnership Type */}
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                  <label className="text-[11px] font-bold text-slate-200 uppercase tracking-widest block mb-2">
                     Partnership Type
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -174,10 +178,10 @@ export default function PartnershipModal({
                             partnershipType: type.key,
                           })
                         }
-                        className={`py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all ${
+                        className={`py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all ${
                           formData.partnershipType === type.key
-                            ? "border-[#001F3F] bg-[#001F3F] text-white"
-                            : "border-slate-200 text-slate-400 hover:border-slate-300"
+                            ? "border-[#FFD700]/70 bg-[#FFD700] text-[#0B1D36]"
+                            : "border-white/20 text-slate-300 bg-[#082546] hover:border-white/35"
                         }`}
                       >
                         {type.label}
@@ -187,13 +191,13 @@ export default function PartnershipModal({
                 </div>
 
                 {/* Company & Contact */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">
+                    <label className="text-[11px] font-bold text-slate-200 uppercase tracking-widest block mb-1.5">
                       Company Name
                     </label>
                     <div className="relative">
-                      <Building2 className="absolute left-3 top-3 size-4 text-slate-300" />
+                      <Building2 className="absolute left-3 top-3.5 size-4 text-slate-400" />
                       <input
                         type="text"
                         required
@@ -205,16 +209,16 @@ export default function PartnershipModal({
                           })
                         }
                         placeholder="Acme Corp"
-                        className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all"
+                        className={fieldClass}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">
+                    <label className="text-[11px] font-bold text-slate-200 uppercase tracking-widest block mb-1.5">
                       Contact Person
                     </label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 size-4 text-slate-300" />
+                      <User className="absolute left-3 top-3.5 size-4 text-slate-400" />
                       <input
                         type="text"
                         required
@@ -226,20 +230,20 @@ export default function PartnershipModal({
                           })
                         }
                         placeholder="John Doe"
-                        className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all"
+                        className={fieldClass}
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Email & Phone */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">
+                    <label className="text-[11px] font-bold text-slate-200 uppercase tracking-widest block mb-1.5">
                       Email
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 size-4 text-slate-300" />
+                      <Mail className="absolute left-3 top-3.5 size-4 text-slate-400" />
                       <input
                         type="email"
                         required
@@ -248,16 +252,16 @@ export default function PartnershipModal({
                           setFormData({ ...formData, email: e.target.value })
                         }
                         placeholder="john@acme.com"
-                        className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all"
+                        className={fieldClass}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">
+                    <label className="text-[11px] font-bold text-slate-200 uppercase tracking-widest block mb-1.5">
                       Phone Number
                     </label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-3 size-4 text-slate-300" />
+                      <Phone className="absolute left-3 top-3.5 size-4 text-slate-400" />
                       <input
                         type="tel"
                         required
@@ -266,20 +270,20 @@ export default function PartnershipModal({
                           setFormData({ ...formData, phone: e.target.value })
                         }
                         placeholder="+63 917 123 4567"
-                        className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all"
+                        className={fieldClass}
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Preferred Date/Time */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">
+                    <label className="text-[11px] font-bold text-slate-200 uppercase tracking-widest block mb-1.5">
                       Preferred Date
                     </label>
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-3 size-4 text-slate-300" />
+                      <Calendar className="absolute left-3 top-3.5 size-4 text-slate-400" />
                       <input
                         type="date"
                         required
@@ -290,16 +294,16 @@ export default function PartnershipModal({
                             preferredDate: e.target.value,
                           })
                         }
-                        className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all"
+                        className={fieldClass}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">
+                    <label className="text-[11px] font-bold text-slate-200 uppercase tracking-widest block mb-1.5">
                       Preferred Time
                     </label>
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-3 size-4 text-slate-300" />
+                      <Clock3 className="absolute right-3 top-3.5 size-4 text-slate-400" />
                       <input
                         type="time"
                         required
@@ -310,7 +314,7 @@ export default function PartnershipModal({
                             preferredTime: e.target.value,
                           })
                         }
-                        className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all"
+                        className={fieldClass}
                       />
                     </div>
                   </div>
@@ -318,11 +322,11 @@ export default function PartnershipModal({
 
                 {/* Message */}
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] font-bold text-slate-200 uppercase tracking-widest block mb-1.5">
                     Message (Optional)
                   </label>
                   <div className="relative">
-                    <MessageSquare className="absolute left-3 top-3 size-4 text-slate-300" />
+                    <MessageSquare className="absolute left-3 top-3.5 size-4 text-slate-400" />
                     <textarea
                       value={formData.message}
                       onChange={(e) =>
@@ -330,7 +334,7 @@ export default function PartnershipModal({
                       }
                       placeholder="Tell us about your warehousing needs..."
                       rows={3}
-                      className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#001F3F]/20 focus:border-[#001F3F] transition-all resize-none"
+                      className="w-full pl-10 pr-3 py-3 border border-white/12 bg-[#082546] text-white placeholder:text-slate-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#FFD700]/25 focus:border-[#FFD700]/50 transition-all resize-none"
                     />
                   </div>
                 </div>
@@ -340,13 +344,13 @@ export default function PartnershipModal({
                   type="submit"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-[#FFD700] text-[#001F3F] py-3.5 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2"
+                  className="w-full bg-[#FFD700] text-[#0B1D36] py-3.5 rounded-xl font-black text-sm uppercase tracking-wider shadow-[inset_0_-1px_0_rgba(0,0,0,0.2)] shadow-yellow-500/20 flex items-center justify-center gap-2"
                 >
                   <Send className="size-4" />
                   Request Partnership Call
                 </motion.button>
 
-                <p className="text-[10px] text-slate-400 text-center">
+                <p className="text-[11px] text-slate-400 text-center">
                   No spam. No subscriptions. We'll call you at the scheduled
                   time to discuss partnership opportunities.
                 </p>
