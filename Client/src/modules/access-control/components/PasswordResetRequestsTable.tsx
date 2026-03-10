@@ -6,7 +6,7 @@ import {
 } from "@/modules/access-control/services/branchEmployee";
 import { showErrorToast, showSuccessToast } from "@/shared/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 
 const statusClassMap: Record<string, string> = {
@@ -60,7 +60,25 @@ export default function PasswordResetRequestsTable() {
     },
   });
 
-  const rows: BranchPasswordResetRequest[] = requests;
+  const currentBranch = useMemo(() => {
+    try {
+      const rawUser = localStorage.getItem("user");
+      if (!rawUser) return "";
+      const parsed = JSON.parse(rawUser);
+      const branch = parsed?.branch ?? parsed?.Branch;
+      return typeof branch === "string" ? branch.trim() : "";
+    } catch {
+      return "";
+    }
+  }, []);
+
+  const rows: BranchPasswordResetRequest[] = useMemo(() => {
+    if (!currentBranch) return requests;
+    return requests.filter(
+      (request) =>
+        String(request.branch ?? "").trim().toLowerCase() === currentBranch.toLowerCase(),
+    );
+  }, [currentBranch, requests]);
 
   return (
     <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">

@@ -128,6 +128,14 @@ export default function RoleNotificationBell({ storageKey }: { storageKey: strin
       .withAutomaticReconnect()
       .configureLogging(LogLevel.None)
       .build();
+    const branchAccountConnection = new HubConnectionBuilder()
+      .withUrl(getHubUrl("branchAccount-managerHub"), {
+        accessTokenFactory: () => token,
+        withCredentials: false,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.None)
+      .build();
 
     branchNotificationConnection.on("InboundShipmentSubmitted", (payload: any) => {
       invalidateRoleRealtimeQueries();
@@ -165,6 +173,16 @@ export default function RoleNotificationBell({ storageKey }: { storageKey: strin
         `Put-away update: ${sku} moved to ${toStatus} by ${performedBy}.`,
       );
     });
+    branchAccountConnection.on("PasswordResetRequested", (payload: any) => {
+      const email = pickValue(payload, ["userEmail", "UserEmail"], "unknown@email");
+      const branch = pickValue(payload, ["branch", "Branch"], "Unknown branch");
+      addNotification(`Password reset requested by ${email} (${branch}).`);
+    });
+    branchAccountConnection.on("PasswordResetRequestUpdated", (payload: any) => {
+      const status = pickValue(payload, ["status", "Status"], "Updated");
+      const requestId = pickValue(payload, ["requestId", "RequestId"], "N/A");
+      addNotification(`Password reset ${status.toLowerCase()}: ${requestId}.`);
+    });
 
     const startConnection = async () => {
       if (isDisposed) {
@@ -181,6 +199,21 @@ export default function RoleNotificationBell({ storageKey }: { storageKey: strin
       }
     };
     void startConnection();
+    const startBranchAccountConnection = async () => {
+      if (isDisposed) {
+        return;
+      }
+      try {
+        await branchAccountConnection.start();
+      } catch (error) {
+        if (isDisposed) return;
+        const message = error instanceof Error ? error.message.toLowerCase() : "";
+        if (message.includes("stopped during negotiation") || message.includes("aborted")) {
+          return;
+        }
+      }
+    };
+    void startBranchAccountConnection();
 
     return () => {
       isDisposed = true;
@@ -188,11 +221,19 @@ export default function RoleNotificationBell({ storageKey }: { storageKey: strin
       branchNotificationConnection.off("InboundShipmentApproved");
       branchNotificationConnection.off("LowStockAlert");
       branchNotificationConnection.off("PutAwayTaskUpdated");
+      branchAccountConnection.off("PasswordResetRequested");
+      branchAccountConnection.off("PasswordResetRequestUpdated");
       if (
         branchNotificationConnection.state === HubConnectionState.Connected ||
         branchNotificationConnection.state === HubConnectionState.Reconnecting
       ) {
         void branchNotificationConnection.stop().catch(() => undefined);
+      }
+      if (
+        branchAccountConnection.state === HubConnectionState.Connected ||
+        branchAccountConnection.state === HubConnectionState.Reconnecting
+      ) {
+        void branchAccountConnection.stop().catch(() => undefined);
       }
     };
   }, [queryClient]);

@@ -150,7 +150,7 @@ namespace Server.Controllers
                             "KicksLogix Account Created - Reset Password Now",
                             onboardingBody);
                     }
-                    catch (InvalidOperationException emailEx)
+                    catch (Exception emailEx)
                     {
                         onboardingEmailSent = false;
                         onboardingEmailWarning = emailEx.Message;
@@ -180,7 +180,8 @@ namespace Server.Controllers
                             ? "Branch user created and role assigned successfully!"
                             : "Branch user created and role assigned, but onboarding email was not sent.",
                         emailSent = onboardingEmailSent,
-                        emailWarning = onboardingEmailWarning
+                        emailWarning = onboardingEmailWarning,
+                        resetLinkPreview = onboardingEmailSent ? null : resetLink
                     });
                 }
                 return BadRequest(result.Errors);
@@ -449,7 +450,19 @@ namespace Server.Controllers
         [HttpGet("password-reset-requests")]
         public async Task<ActionResult<List<BranchPasswordResetRequestDto>>> GetPasswordResetRequestsAsync()
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var currentUser = await _userManager.FindByIdAsync(currentUserId);
+            var currentBranch = currentUser?.Branch ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(currentBranch))
+            {
+                return Ok(new List<BranchPasswordResetRequestDto>());
+            }
+
             var requests = await _context.BranchPasswordResetRequests
+                .Where(request =>
+                    request.Branch == currentBranch &&
+                    AllowedBranchRoles.Contains(request.RequestedRoleName))
                 .OrderByDescending(request => request.RequestedAt)
                 .Take(200)
                 .Select(request => new BranchPasswordResetRequestDto
@@ -538,6 +551,7 @@ namespace Server.Controllers
 </div>";
 
             bool emailSent;
+            string? emailWarning = null;
             try
             {
                 emailSent = await _emailSenderService.SendAsync(
@@ -545,13 +559,10 @@ namespace Server.Controllers
                     "KicksLogix Password Reset",
                     emailBody);
             }
-            catch (InvalidOperationException emailEx)
+            catch (Exception emailEx)
             {
-                return BadRequest(new
-                {
-                    message = "Unable to send reset email via Resend. Verify API key and sender configuration, then try again.",
-                    providerError = emailEx.Message
-                });
+                emailSent = false;
+                emailWarning = emailEx.Message;
             }
 
             request.Status = "Approved";
@@ -584,8 +595,9 @@ namespace Server.Controllers
             {
                 return Ok(new
                 {
-                    message = "Request approved, but Resend API key is not configured in Development. Email was not sent.",
-                    resetLinkPreview = resetLink
+                    message = "Request approved, but reset email could not be sent. Share the preview link manually and verify email provider settings.",
+                    resetLinkPreview = resetLink,
+                    emailWarning
                 });
             }
 
@@ -743,6 +755,7 @@ namespace Server.Controllers
 </div>";
 
             bool emailSent;
+            string? emailWarning = null;
             try
             {
                 emailSent = await _emailSenderService.SendAsync(
@@ -750,13 +763,10 @@ namespace Server.Controllers
                     "KicksLogix Password Reset",
                     emailBody);
             }
-            catch (InvalidOperationException emailEx)
+            catch (Exception emailEx)
             {
-                return BadRequest(new
-                {
-                    message = "Unable to send reset email via Resend. Verify API key and sender configuration, then try again.",
-                    providerError = emailEx.Message
-                });
+                emailSent = false;
+                emailWarning = emailEx.Message;
             }
 
             request.Status = "Approved";
@@ -791,8 +801,9 @@ namespace Server.Controllers
             {
                 return Ok(new
                 {
-                    message = "Request approved, but Resend API key is not configured in Development. Email was not sent.",
-                    resetLinkPreview = resetLink
+                    message = "Request approved, but reset email could not be sent. Share the preview link manually and verify email provider settings.",
+                    resetLinkPreview = resetLink,
+                    emailWarning
                 });
             }
 
