@@ -15,7 +15,13 @@ export default function Login() {
             backgroundSize: "30px 30px",
           }}
         />
-        <div className="relative bg-[#001631] hidden xl:flex flex-col p-10 gap-10 justify-center">
+        <div className="relative hidden xl:flex flex-col p-10 justify-start">
+          <img
+            src="/employees.jpg"
+            alt="Warehouse staff"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-[#001F3F]/62 shadow-[inset_0_0_220px_rgba(0,31,63,0.75)]" />
           <LoginPoster />
         </div>
         {/* Log In */}
