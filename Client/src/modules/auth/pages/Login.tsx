@@ -1,8 +1,6 @@
 import LoginForm from "@/modules/auth/components/LoginForm";
 import LoginPoster from "@/modules/auth/components/LoginPoster";
 
-
-
 export default function Login() {
   return (
     <>
@@ -17,7 +15,7 @@ export default function Login() {
         />
         <div className="relative hidden xl:flex flex-col p-10 justify-start">
           <img
-            src="/employees.jpg"
+            src="/warehouse.jpg"
             alt="Warehouse staff"
             className="absolute inset-0 h-full w-full object-cover"
           />

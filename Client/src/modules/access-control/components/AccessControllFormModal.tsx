@@ -97,6 +97,15 @@ export default function AccessControllFormModal() {
     mutationFn: createBranchEmployee,
     onSuccess: (data) => {
       showSuccessToast(data.message || "Branch employee created successfully.");
+      if (data.emailSent === false && data.emailWarning) {
+        showErrorToast(`Email not sent: ${data.emailWarning}`);
+      }
+      if (data.resetLinkPreview) {
+        void navigator.clipboard
+          .writeText(data.resetLinkPreview)
+          .then(() => showSuccessToast("Reset link preview copied to clipboard."))
+          .catch(() => showErrorToast(`Reset link preview: ${data.resetLinkPreview}`));
+      }
       setFirstName("");
       setMiddleName("");
       setLastName("");
