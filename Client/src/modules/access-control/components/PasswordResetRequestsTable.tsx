@@ -42,6 +42,15 @@ export default function PasswordResetRequestsTable() {
     mutationFn: (requestId: string) => confirmBranchPasswordResetRequest(requestId),
     onSuccess: (data) => {
       showSuccessToast(data.message || "Reset link sent to employee email.");
+      if (data.emailSent === false && data.emailWarning) {
+        showErrorToast(`Email not sent: ${data.emailWarning}`);
+      }
+      if (data.resetLinkPreview) {
+        void navigator.clipboard
+          .writeText(data.resetLinkPreview)
+          .then(() => showSuccessToast("Reset link preview copied to clipboard."))
+          .catch(() => showErrorToast(`Reset link preview: ${data.resetLinkPreview}`));
+      }
       void queryClient.invalidateQueries({ queryKey: ["branch-password-reset-requests"] });
     },
     onError: (error: any) => {

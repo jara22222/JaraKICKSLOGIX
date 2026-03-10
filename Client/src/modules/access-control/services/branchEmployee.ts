@@ -12,6 +12,9 @@ export interface CreateBranchEmployeePayload {
 
 export interface ApiMessageResponse {
   message: string;
+  emailSent?: boolean;
+  emailWarning?: string;
+  resetLinkPreview?: string | null;
 }
 
 export interface BranchEmployee {

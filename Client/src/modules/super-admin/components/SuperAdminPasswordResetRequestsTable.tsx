@@ -49,6 +49,15 @@ export default function SuperAdminPasswordResetRequestsTable() {
     mutationFn: (requestId: string) => confirmSuperAdminPasswordResetRequest(requestId),
     onSuccess: (data) => {
       showSuccessToast(data.message || "Reset link sent to manager email.");
+      if (data.emailSent === false && data.emailWarning) {
+        showErrorToast(`Email not sent: ${data.emailWarning}`);
+      }
+      if (data.resetLinkPreview) {
+        void navigator.clipboard
+          .writeText(data.resetLinkPreview)
+          .then(() => showSuccessToast("Reset link preview copied to clipboard."))
+          .catch(() => showErrorToast(`Reset link preview: ${data.resetLinkPreview}`));
+      }
       void queryClient.invalidateQueries({ queryKey: ["super-admin-password-reset-requests"] });
     },
     onError: (error: any) => {

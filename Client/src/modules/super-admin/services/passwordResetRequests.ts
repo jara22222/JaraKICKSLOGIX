@@ -20,6 +20,9 @@ export interface SuperAdminPasswordResetRequest {
 
 export interface ApiMessageResponse {
   message: string;
+  emailSent?: boolean;
+  emailWarning?: string;
+  resetLinkPreview?: string | null;
 }
 
 export const getSuperAdminPasswordResetRequests = async (): Promise<SuperAdminPasswordResetRequest[]> => {
